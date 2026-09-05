@@ -5,6 +5,10 @@ from routes.vi_tri_do import vi_tri_bp
 from routes.luot_gui_xe import luot_gui_bp
 from routes.ve_thang import ve_thang_bp
 from routes.parking import parking_bp
+from routes.tai_khoan import tai_khoan_bp
+from routes.khu_vuc import khu_vuc_bp
+from routes.thong_ke import thong_ke_bp
+from routes.he_thong_ai import he_thong_ai_bp
 
 
 app = Flask(__name__)
@@ -16,6 +20,10 @@ app.register_blueprint(vi_tri_bp)
 app.register_blueprint(luot_gui_bp)
 app.register_blueprint(ve_thang_bp)
 app.register_blueprint(parking_bp)
+app.register_blueprint(tai_khoan_bp)
+app.register_blueprint(khu_vuc_bp)
+app.register_blueprint(thong_ke_bp)
+app.register_blueprint(he_thong_ai_bp)
 
 
 @app.route("/")

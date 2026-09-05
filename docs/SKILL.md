@@ -59,6 +59,17 @@ Các skill hỗ trợ tầng hệ thống và phát triển:
 
 ---
 
+## 6. Management & Analytics Skills
+
+Các skill quản lý tài khoản, khu vực đỗ và phân tích dữ liệu bằng GenAI:
+
+* `authentication`
+* `parking-area`
+* `statistics`
+* `genai-analytics`
+
+---
+
 # 6. System Architecture
 
 XeParking sử dụng kiến trúc trong đó AI chịu trách nhiệm nhận diện, còn Business Service chịu trách nhiệm quyết định nghiệp vụ.
@@ -430,13 +441,18 @@ docs/
     ├── parking-visual-debug.md
     ├── business-rules.md
     ├── image-processing.md
-    └── model-management.md
+    ├── model-management.md
+    │
+    ├── authentication.md
+    ├── parking-area.md
+    ├── statistics.md
+    └── genai-analytics.md
 ```
 
 Tổng cộng:
 
 ```text
-20 Skills
+24 Skills
 ```
 
 ---

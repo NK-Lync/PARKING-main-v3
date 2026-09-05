@@ -55,14 +55,17 @@ XeParking/
 │
 ├── database/
 │   ├── __init__.py
-│   └── supabase_client.py
+│   ├── supabase_client.py
+│   └── schema.sql
 │
 ├── models/
 │   ├── __init__.py
 │   ├── loai_xe.py
 │   ├── vi_tri_do.py
 │   ├── luot_gui_xe.py
-│   └── ve_thang.py
+│   ├── ve_thang.py
+│   ├── tai_khoan.py
+│   └── khu_vuc.py
 │
 ├── services/
 │   ├── __init__.py
@@ -70,7 +73,10 @@ XeParking/
 │   ├── vi_tri_service.py
 │   ├── luot_gui_service.py
 │   ├── ve_thang_service.py
-│   └── parking_service.py
+│   ├── parking_service.py
+│   ├── tai_khoan_service.py
+│   ├── khu_vuc_service.py
+│   └── thong_ke_service.py
 │
 ├── ai/
 │   ├── __init__.py
@@ -79,7 +85,9 @@ XeParking/
 │   ├── vehicle_classifier.py
 │   ├── vehicle_detector.py
 │   ├── parking_ai_service.py
-│   └── parking_occupancy.py
+│   ├── parking_occupancy.py
+│   ├── iai_provider.py
+│   └── he_thong_ai.py
 │
 └── routes/
     ├── __init__.py
@@ -87,7 +95,11 @@ XeParking/
     ├── vi_tri_do.py
     ├── luot_gui_xe.py
     ├── ve_thang.py
-    └── parking.py
+    ├── parking.py
+    ├── tai_khoan.py
+    ├── khu_vuc.py
+    ├── thong_ke.py
+    └── he_thong_ai.py
 ```
 
 ---
@@ -117,6 +129,10 @@ vi_tri_bp
 luot_gui_bp
 ve_thang_bp
 parking_bp
+tai_khoan_bp
+khu_vuc_bp
+thong_ke_bp
+he_thong_ai_bp
 ```
 
 ---
@@ -141,6 +157,27 @@ GET  /api/parking/status
 POST /api/parking/ai-entry
 POST /api/parking/ai-exit
 POST /api/parking/ai-status
+```
+
+Các API quản lý và phân tích:
+
+```text
+GET    /api/taikhoan
+POST   /api/taikhoan/dang-nhap
+POST   /api/taikhoan/dang-xuat
+
+GET    /api/khuvuc
+GET    /api/khuvuc/cho-trong
+POST   /api/khuvuc/cap-nhat
+
+GET    /api/thongke/luu-luong
+GET    /api/thongke/doanh-thu
+GET    /api/thongke/phan-tich
+
+POST   /api/ai/bao-cao-luu-luong
+POST   /api/ai/gio-cao-diem
+POST   /api/ai/goi-y-nhan-su
+POST   /api/ai/hoi-dap
 ```
 
 Luồng tổng quát:
@@ -180,6 +217,8 @@ PlateRecognizer
 VehicleClassifier
 ParkingOccupancyDetector
 ParkingAIService
+IAIProvider (giao diện GenAI)
+HeThongAI (GenAI phân tích dữ liệu)
 ```
 
 Nguyên tắc:
@@ -637,6 +676,9 @@ ViTriService
 LuotGuiService
 VeThangService
 ParkingService
+TaiKhoanService
+KhuVucService
+ThongKeService
 ```
 
 Trong đó `ParkingService` là service chính cho nghiệp vụ parking.
@@ -745,6 +787,8 @@ loaixe
 vitrido
 luotguixe
 vethang
+khuvuc
+taikhoan
 ```
 
 Quan hệ nghiệp vụ:
@@ -755,10 +799,15 @@ loaixe
    └──── luotguixe
               │
               └──── vitrido
+                        │
+                        └──── khuvuc (theo tenkhuvuc)
 
 vethang
    │
    └──── bienso
+
+taikhoan
+   (độc lập, phục vụ xác thực người dùng)
 ```
 
 ---
