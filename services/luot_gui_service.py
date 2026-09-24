@@ -38,12 +38,14 @@ class LuotGuiService:
         thoi_gian_vao,
         thoi_gian_ra=None,
         tong_phi=0,
-        tinh_trang=None
+        tinh_trang=None,
+        loai_ve=None
     ):
         data = {
             "bienso": bien_so,
             "maloaixe": ma_loai_xe,
             "mavitri": ma_vi_tri,
+            "loaive": loai_ve if loai_ve is not None else "VE_LUOT",
             "thoigianvao": thoi_gian_vao,
             "tongphi": tong_phi
         }
@@ -72,12 +74,14 @@ class LuotGuiService:
         thoi_gian_vao,
         thoi_gian_ra,
         tong_phi,
-        tinh_trang
+        tinh_trang,
+        loai_ve=None
     ):
         data = {
             "bienso": bien_so,
             "maloaixe": ma_loai_xe,
             "mavitri": ma_vi_tri,
+            "loaive": loai_ve if loai_ve is not None else "VE_LUOT",
             "thoigianvao": thoi_gian_vao,
             "thoigianra": thoi_gian_ra,
             "tongphi": tong_phi,

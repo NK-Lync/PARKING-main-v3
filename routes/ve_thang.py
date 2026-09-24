@@ -90,10 +90,17 @@ def create_ve_thang():
                 "message": "Thiếu ngayhethan"
             }, 400)
 
+        ten_khach_hang = data.get("tenkhachhang")
+        ma_loai_xe = data.get("maloaixe")
+        ngay_dang_ky = data.get("ngaydangky")
+
         result = VeThangService.create(
             bien_so,
             ngay_het_han,
-            trang_thai
+            trang_thai,
+            ten_khach_hang,
+            ma_loai_xe,
+            ngay_dang_ky
         )
 
         return json_response({
@@ -143,11 +150,18 @@ def update_ve_thang(ma_ve):
                 "message": "Thiếu trangthai"
             }, 400)
 
+        ten_khach_hang = data.get("tenkhachhang")
+        ma_loai_xe = data.get("maloaixe")
+        ngay_dang_ky = data.get("ngaydangky")
+
         result = VeThangService.update(
             ma_ve,
             bien_so,
             ngay_het_han,
-            trang_thai
+            trang_thai,
+            ten_khach_hang,
+            ma_loai_xe,
+            ngay_dang_ky
         )
 
         if not result:

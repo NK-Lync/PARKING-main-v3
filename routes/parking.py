@@ -38,13 +38,28 @@ def json_response(data, status_code=200):
 
 # ============================================================
 # AI SERVICES
+#
+# Lazy-load: chỉ khởi tạo model khi endpoint AI vision thực sự
+# được gọi. Nhờ vậy app khởi động được ngay cả khi chưa có file
+# model (ví dụ models/license_plate.pt chưa được huấn luyện).
 # ============================================================
 
-parking_ai_service = ParkingAIService()
+_parking_ai_service = None
+_parking_occupancy_detector = None
 
-parking_occupancy_detector = (
-    ParkingOccupancyDetector()
-)
+
+def _get_parking_ai_service():
+    global _parking_ai_service
+    if _parking_ai_service is None:
+        _parking_ai_service = ParkingAIService()
+    return _parking_ai_service
+
+
+def _get_parking_occupancy_detector():
+    global _parking_occupancy_detector
+    if _parking_occupancy_detector is None:
+        _parking_occupancy_detector = ParkingOccupancyDetector()
+    return _parking_occupancy_detector
 
 
 # ============================================================
@@ -291,7 +306,7 @@ def ai_vehicle_entry():
         # ====================================================
 
         ai_result = (
-            parking_ai_service
+            _get_parking_ai_service()
             .process_image(
                 temp_path
             )
@@ -473,7 +488,7 @@ def ai_vehicle_entry():
         # ====================================================
 
         occupancy_result = (
-            parking_occupancy_detector
+            _get_parking_occupancy_detector()
             .detect(
                 temp_path
             )
@@ -913,7 +928,7 @@ def ai_vehicle_exit():
         # ====================================================
 
         ai_result = (
-            parking_ai_service
+            _get_parking_ai_service()
             .process_image(
                 temp_path
             )
@@ -1146,7 +1161,7 @@ def ai_parking_status():
         # ====================================================
 
         ai_result = (
-            parking_occupancy_detector
+            _get_parking_occupancy_detector()
             .detect(
                 temp_path
             )

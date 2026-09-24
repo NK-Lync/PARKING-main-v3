@@ -5,6 +5,7 @@ class LuotGuiXe:
         bienSo=None,
         maLoaiXe=None,
         maViTri=None,
+        loaiVe=None,
         thoiGianVao=None,
         thoiGianRa=None,
         tongPhi=None,
@@ -14,6 +15,7 @@ class LuotGuiXe:
         self.bienSo = bienSo
         self.maLoaiXe = maLoaiXe
         self.maViTri = maViTri
+        self.loaiVe = loaiVe
         self.thoiGianVao = thoiGianVao
         self.thoiGianRa = thoiGianRa
         self.tongPhi = tongPhi
@@ -25,6 +27,7 @@ class LuotGuiXe:
             "bienso": self.bienSo,
             "maloaixe": self.maLoaiXe,
             "mavitri": self.maViTri,
+            "loaive": self.loaiVe,
             "thoigianvao": self.thoiGianVao,
             "thoigianra": self.thoiGianRa,
             "tongphi": self.tongPhi,

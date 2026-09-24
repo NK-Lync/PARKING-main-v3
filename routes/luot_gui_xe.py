@@ -88,6 +88,8 @@ def create_luot_gui():
                 "message": "Thiếu thoigianvao"
             }), 400
 
+        loai_ve = data.get("loaive")
+
         result = LuotGuiService.create(
             bien_so,
             ma_loai_xe,
@@ -95,7 +97,8 @@ def create_luot_gui():
             thoi_gian_vao,
             thoi_gian_ra,
             tong_phi,
-            tinh_trang
+            tinh_trang,
+            loai_ve
         )
 
         return jsonify({
@@ -148,6 +151,8 @@ def update_luot_gui(ma_luot_gui):
                 "message": "Thiếu tinhtrang"
             }), 400
 
+        loai_ve = data.get("loaive")
+
         result = LuotGuiService.update(
             ma_luot_gui,
             bien_so,
@@ -156,7 +161,8 @@ def update_luot_gui(ma_luot_gui):
             thoi_gian_vao,
             thoi_gian_ra,
             tong_phi,
-            tinh_trang
+            tinh_trang,
+            loai_ve
         )
 
         if not result:

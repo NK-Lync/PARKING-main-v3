@@ -34,7 +34,10 @@ class VeThangService:
     def create(
         bien_so,
         ngay_het_han,
-        trang_thai=None
+        trang_thai=None,
+        ten_khach_hang=None,
+        ma_loai_xe=None,
+        ngay_dang_ky=None
     ):
         data = {
             "bienso": bien_so,
@@ -43,6 +46,15 @@ class VeThangService:
 
         if trang_thai is not None:
             data["trangthai"] = trang_thai
+
+        if ten_khach_hang is not None:
+            data["tenkhachhang"] = ten_khach_hang
+
+        if ma_loai_xe is not None:
+            data["maloaixe"] = ma_loai_xe
+
+        if ngay_dang_ky is not None:
+            data["ngaydangky"] = ngay_dang_ky
 
         response = (
             supabase
@@ -58,13 +70,25 @@ class VeThangService:
         ma_ve,
         bien_so,
         ngay_het_han,
-        trang_thai
+        trang_thai,
+        ten_khach_hang=None,
+        ma_loai_xe=None,
+        ngay_dang_ky=None
     ):
         data = {
             "bienso": bien_so,
             "ngayhethan": ngay_het_han,
             "trangthai": trang_thai
         }
+
+        if ten_khach_hang is not None:
+            data["tenkhachhang"] = ten_khach_hang
+
+        if ma_loai_xe is not None:
+            data["maloaixe"] = ma_loai_xe
+
+        if ngay_dang_ky is not None:
+            data["ngaydangky"] = ngay_dang_ky
 
         response = (
             supabase
