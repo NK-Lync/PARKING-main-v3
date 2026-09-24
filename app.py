@@ -1,4 +1,6 @@
-from flask import Flask
+import os
+
+from flask import Flask, send_from_directory
 
 from routes.loai_xe import loai_xe_bp
 from routes.vi_tri_do import vi_tri_bp
@@ -26,12 +28,22 @@ app.register_blueprint(thong_ke_bp)
 app.register_blueprint(he_thong_ai_bp)
 
 
+FRONTEND_DIR = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "frontend"
+)
+
+
 @app.route("/")
-def home():
-    return {
-        "success": True,
-        "message": "XeParking API đang hoạt động"
-    }
+def index():
+    """Serve giao diện chính (SPA)."""
+    return send_from_directory(FRONTEND_DIR, "index.html")
+
+
+@app.route("/<path:filename>")
+def serve_frontend(filename):
+    """Serve các file tĩnh của frontend (css/js/assets)."""
+    return send_from_directory(FRONTEND_DIR, filename)
 
 
 if __name__ == "__main__":

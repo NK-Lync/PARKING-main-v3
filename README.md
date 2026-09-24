@@ -110,7 +110,8 @@ ALTER TABLE taikhoan  DISABLE ROW LEVEL SECURITY;
 python app.py
 ```
 
-API chạy tại `http://127.0.0.1:5000`.
+Sau khi chạy, mở trình duyệt tại `http://127.0.0.1:5000` — giao diện web (SPA)
+sẽ được hiển thị. Các API REST đều nằm dưới `/api/*`.
 
 ## Model AI (vision)
 
