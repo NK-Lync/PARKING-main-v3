@@ -6,23 +6,40 @@ App.router = {
   _content: null,
   _topbarTitle: null,
   _topbarUser: null,
+  _sideUser: null,
   _sidebar: null,
+  _shell: null,
+  _scrim: null,
 
   init() {
     this._content = document.getElementById("app-content");
     this._topbarTitle = document.getElementById("topbar-title");
     this._topbarUser = document.getElementById("topbar-user");
+    this._sideUser = document.getElementById("side-user");
     this._sidebar = document.getElementById("sidebar-nav");
+    this._shell = document.getElementById("app-shell");
+    this._scrim = document.getElementById("side-scrim");
 
     window.addEventListener("hashchange", () => this.route());
-    // Đăng xuất toàn cục (nút ở topbar).
-    document.getElementById("btn-logout")?.addEventListener("click", () => this.handleLogout());
-    // Toggle sidebar trên mobile.
-    document.getElementById("btn-toggle-sidebar")?.addEventListener("click", () => {
-      document.querySelector(".sidebar")?.classList.toggle("open");
-    });
+
+    document
+      .getElementById("btn-logout")
+      ?.addEventListener("click", () => this.handleLogout());
+
+    // Trên màn hẹp, sidebar trượt ra và che mất một phần nội dung.
+    // Bấm ra vùng mờ hoặc chọn xong một mục thì đóng lại.
+    document
+      .getElementById("btn-toggle-sidebar")
+      ?.addEventListener("click", () => this.moSidebar(!this._shell.classList.contains("side-open")));
+
+    this._scrim?.addEventListener("click", () => this.moSidebar(false));
 
     this.route();
+  },
+
+  moSidebar(mo) {
+    this._shell.classList.toggle("side-open", !!mo);
+    if (this._scrim) this._scrim.hidden = !mo;
   },
 
   parse() {
@@ -33,6 +50,9 @@ App.router = {
 
   route() {
     App.charts.destroy();
+    // Giải phóng camera khi rời màn hình, nếu không đèn camera vẫn sáng.
+    App.camera.tat();
+    this.moSidebar(false);
 
     if (!App.auth.isLoggedIn()) {
       this.renderShell(false);
@@ -40,7 +60,7 @@ App.router = {
       return;
     }
 
-    const { route, param } = this.parse();
+    const { route } = this.parse();
     const view = App.views[route];
 
     if (!App.auth.can(route) || !view) {
@@ -50,50 +70,78 @@ App.router = {
     }
 
     this.renderShell(true);
-    view.render(param);
+    view.render(this.parse().param);
   },
 
   // Dựng khung (sidebar + topbar) khi đã đăng nhập; bỏ đi khi chưa.
   renderShell(show) {
-    document.getElementById("app-shell").style.display = show ? "" : "none";
-    document.getElementById("login-root").style.display = show ? "none" : "";
+    document.getElementById("app-shell").hidden = !show;
+    document.getElementById("login-root").hidden = show;
     if (!show) return;
 
-    // Đổ menu theo quyền.
+    const dangMo = this.parse().route;
     const perms = App.config.PERMISSIONS[App.auth.role()] || [];
-    const items = App.config.MENU
-      .filter((m) => perms.includes(m.route))
-      .map((m) => {
-        const active = this.parse().route === m.route ? "active" : "";
-        return `
-          <a href="#/${m.route}" class="list-group-item list-group-item-action ${active}" data-route="${m.route}">
-            <i class="bi ${m.icon} me-2"></i>${App.ui.escape(m.label)}
-          </a>`;
-      })
-      .join("");
-    this._sidebar.innerHTML = items;
+    const duocPhep = App.config.MENU.filter((m) => perms.includes(m.route));
+
+    // Gom menu theo nhóm. Nhóm nào không còn mục nào thì bỏ luôn
+    // tiêu đề, để vai trò ít quyền không thấy tiêu đề trống.
+    let html = "";
+    App.config.NHOM.forEach((nhom) => {
+      const muc = duocPhep.filter((m) => m.nhom === nhom);
+      if (!muc.length) return;
+
+      html += `<div class="xp-nav-group">${App.ui.escape(nhom)}</div>`;
+      html += muc
+        .map(
+          (m) => `
+          <a class="xp-nav-item${m.route === dangMo ? " on" : ""}"
+             href="#/${m.route}" data-route="${m.route}">
+            ${App.icons.svg(m.icon, 17)}<span>${App.ui.escape(m.label)}</span>
+          </a>`
+        )
+        .join("");
+    });
+    this._sidebar.innerHTML = html;
 
     // Tiêu đề topbar.
-    const current = App.config.MENU.find((m) => m.route === this.parse().route);
+    const current = App.config.MENU.find((m) => m.route === dangMo);
     this._topbarTitle.textContent = current ? current.label : "";
 
-    // Thông tin người dùng.
+    // Thông tin người dùng: hiện ở cả topbar lẫn chân sidebar.
     const user = App.auth.getUser();
+    const ten = user.tendangnhap || "";
+    const chuDau = (ten.match(/[a-zA-Z0-9À-ỹ]/) || ["?"])[0];
+
     this._topbarUser.innerHTML = `
-      <span class="text-muted me-2 d-none d-md-inline">
-        ${App.ui.escape(user.tendangnhap || "")}
-      </span>
+      <span class="xp-top-user">${App.ui.escape(user.hoten || ten)}</span>
       ${App.ui.roleBadge(user.vaitro)}`;
+
+    if (this._sideUser) {
+      this._sideUser.innerHTML = `
+        <div class="xp-avatar">${App.ui.escape(chuDau)}</div>
+        <div class="xp-grow">
+          <div class="xp-side-foot-name">${App.ui.escape(ten)}</div>
+          <div class="xp-side-foot-role">${App.ui.escape(App.ui.roleLabel(user.vaitro))}</div>
+        </div>`;
+    }
   },
 
   renderForbidden(route) {
     this._topbarTitle.textContent = "Không có quyền truy cập";
     this._content.innerHTML = `
-      <div class="text-center py-5">
-        <i class="bi bi-shield-lock text-muted" style="font-size:4rem"></i>
-        <h4 class="mt-3">Bạn không có quyền truy cập màn hình này</h4>
-        <p class="text-muted">Vai trò hiện tại của bạn không được phép vào "${App.ui.escape(route)}".</p>
-        <a href="#/dashboard" class="btn btn-primary">Về Dashboard</a>
+      <div class="xp-card">
+        <div class="xp-card-body">
+          <div class="xp-empty" style="padding:56px 20px">
+            <div style="color:var(--xp-faint)">${App.icons.svg("lock", 40)}</div>
+            <div class="xp-bold" style="font-size:16px;color:var(--xp-text);margin-top:12px">
+              Bạn không có quyền truy cập màn hình này
+            </div>
+            <div class="xp-small xp-mt-sm">
+              Vai trò hiện tại không được phép vào “${App.ui.escape(route)}”.
+            </div>
+            <a href="#/dashboard" class="xp-btn xp-btn-primary" style="margin-top:18px">Về Dashboard</a>
+          </div>
+        </div>
       </div>`;
   },
 

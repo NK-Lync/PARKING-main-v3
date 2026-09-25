@@ -419,6 +419,7 @@ docs/
 │
 └── skills/
     │
+    ├── database-integration.md
     ├── api.md
     ├── code-review.md
     ├── debugging.md

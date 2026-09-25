@@ -1,5 +1,5 @@
 // ============================================================
-// views/chotrong.js — theo dõi chỗ trống (grid + tổng hợp khu vực)
+// views/chotrong.js — theo dõi chỗ trống (sơ đồ vị trí + tổng hợp)
 // ============================================================
 
 App.views.chotrong = {
@@ -8,56 +8,122 @@ App.views.chotrong = {
     App.router.setContent(App.ui.spinner());
 
     try {
-      const [kvRes, vtRes] = await Promise.all([
+      const [kvRes, vtRes, dsKvRes] = await Promise.all([
         App.api.get("/api/khuvuc/cho-trong"),
         App.api.get("/api/vitrido"),
+        App.api.get("/api/khuvuc"),
       ]);
+
       const khuVucs = kvRes.data || [];
       const viTris = vtRes.data || [];
 
-      const summary = khuVucs.map((k) => `
-        <div class="col-6 col-md-4 col-lg-3">
-          <div class="card stat-card h-100">
-            <div class="card-body text-center">
-              <div class="stat-label">${App.ui.escape(k.tenkhuvuc)}</div>
-              <div class="stat-value ${k.so_cho_trong > 0 ? "text-success" : "text-danger"}">${k.so_cho_trong}</div>
-              <div class="stat-label">/ ${k.tong_so_vi_tri} chỗ trống</div>
-            </div>
-          </div>
-        </div>`).join("");
+      // Bảng vitrido chỉ lưu khóa ngoại makhuvuc, nên phải tra tên
+      // khu vực qua danh sách khu vực.
+      const tenKhuVuc = {};
+      (dsKvRes.data || []).forEach((k) => {
+        tenKhuVuc[k.makhuvuc] = k.tenkhuvuc;
+      });
+      const khuVucCua = (v) => tenKhuVuc[v.makhuvuc] || "—";
 
-      const grid = viTris.map((v) => {
-        const empty = v.trangthai === "Còn trống";
-        return `
-          <div class="slot ${empty ? "empty" : "occupied"}" title="${App.ui.escape(v.tenkhuvuc || "")} #${v.mavitri}">
-            <i class="bi ${empty ? "bi-check-circle" : "bi-car-front-fill"}"></i>
-            #${v.mavitri}
-            <div class="small opacity-75">${App.ui.escape(v.tenkhuvuc || "")}</div>
-          </div>`;
-      }).join("");
+      App.router.setContent(this._khung(khuVucs, viTris, khuVucCua));
+    } catch (err) {
+      App.router.setContent(App.ui.alertLoi(err));
+    }
+  },
 
-      App.router.setContent(`
-        <div class="card mb-3">
-          <div class="card-header">Chỗ trống theo khu vực</div>
-          <div class="card-body">
-            <div class="row g-3">${summary || '<div class="col text-muted">Chưa có khu vực.</div>'}</div>
-          </div>
+  _khung(khuVucs, viTris, khuVucCua) {
+    const U = App.ui;
+
+    const tongCho = viTris.length;
+    const conTrong = viTris.filter((v) => v.trangthai === "Còn trống").length;
+    const dangDung = tongCho - conTrong;
+
+    // ---- Tổng hợp theo khu vực ----
+    const theKhuVuc = khuVucs.length
+      ? `<div class="xp-grid cols-4">
+          ${khuVucs
+            .map((k) =>
+              U.stat({
+                label: k.tenkhuvuc,
+                value: k.so_cho_trong ?? 0,
+                tone: (k.so_cho_trong ?? 0) > 0 ? "ok" : "err",
+                icon: "parking",
+                hint: `trống trên ${k.tong_so_vi_tri ?? 0} chỗ`,
+              })
+            )
+            .join("")}
+        </div>`
+      : U.empty("Chưa có khu vực nào.");
+
+    // ---- Sơ đồ từng vị trí ----
+    const soDo = viTris.length
+      ? `<div class="xp-slots">
+          ${viTris
+            .map((v) => {
+              const trong = v.trangthai === "Còn trống";
+              const khu = khuVucCua(v);
+              return `
+                <div class="xp-slot ${trong ? "trong" : "dung"}"
+                     title="${U.escape(khu)} · vị trí #${v.mavitri}">
+                  <span class="xp-slot-mark">
+                    ${App.icons.svg(trong ? "check-circle" : "car", 17)}
+                  </span>
+                  <div class="xp-slot-code">#${v.mavitri}</div>
+                  <div class="xp-slot-zone">${U.escape(khu)}</div>
+                  <div class="xp-slot-state">${trong ? "Trống" : "Có xe"}</div>
+                </div>`;
+            })
+            .join("")}
+        </div>`
+      : U.empty("Chưa có vị trí đỗ nào.");
+
+    return `
+      <div class="xp-stack">
+        <div class="xp-grid cols-4">
+          ${U.stat({
+            label: "Tổng số chỗ",
+            value: tongCho,
+            icon: "parking",
+            hint: "toàn bộ bãi xe",
+          })}
+          ${U.stat({
+            label: "Đang có xe",
+            value: dangDung,
+            tone: "warn",
+            icon: "car",
+            hint: "chỗ đã bị chiếm",
+          })}
+          ${U.stat({
+            label: "Còn trống",
+            value: conTrong,
+            tone: conTrong > 0 ? "ok" : "err",
+            icon: "check-circle",
+            hint: conTrong > 0 ? "có thể nhận xe vào" : "bãi đã kín",
+          })}
+          ${U.stat({
+            label: "Số khu vực",
+            value: khuVucs.length,
+            icon: "map",
+            hint: "khu đang hoạt động",
+          })}
         </div>
 
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <span>Sơ đồ vị trí đỗ</span>
-            <div class="d-flex gap-3 small">
-              <span><span class="badge bg-success me-1">■</span>Còn trống</span>
-              <span><span class="badge bg-danger me-1">■</span>Đang sử dụng</span>
-            </div>
-          </div>
-          <div class="card-body">
-            <div class="slot-grid">${grid || '<div class="text-muted">Chưa có vị trí đỗ.</div>'}</div>
-          </div>
-        </div>`);
-    } catch (err) {
-      App.router.setContent(`<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`);
-    }
+        ${U.card({
+          title: "Chỗ trống theo khu vực",
+          note: "Số liệu lấy từ bảng khu vực",
+          body: theKhuVuc,
+        })}
+
+        ${U.card({
+          title: "Sơ đồ vị trí đỗ",
+          note: `Cập nhật theo trạng thái hiện tại của từng vị trí`,
+          actions: `
+            <div class="xp-slot-legend">
+              <span><i class="xp-swatch trong"></i>Trống</span>
+              <span><i class="xp-swatch dung"></i>Đang có xe</span>
+            </div>`,
+          body: soDo,
+        })}
+      </div>`;
   },
 };

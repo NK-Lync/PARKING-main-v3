@@ -4,6 +4,7 @@ import os
 import cv2
 import numpy as np
 
+from ai.duong_dan import duong_dan
 from ai.vehicle_detector import VehicleDetector
 
 
@@ -15,17 +16,8 @@ class ParkingOccupancyDetector:
     ):
         self.vehicle_detector = VehicleDetector()
 
-        # Thư mục gốc của project
-        project_root = os.path.dirname(
-            os.path.dirname(
-                os.path.abspath(__file__)
-            )
-        )
-
-        self.config_path = os.path.join(
-            project_root,
-            config_path
-        )
+        # Neo vào gốc dự án, không tính theo thư mục đang đứng.
+        self.config_path = duong_dan(config_path)
 
         self.parking_slots = (
             self.load_parking_slots()

@@ -47,8 +47,19 @@ def serve_frontend(filename):
 
 
 if __name__ == "__main__":
+    # Chỉ dùng cho chạy thử ở máy. Khi deploy thật, chạy bằng WSGI server:
+    #
+    #     gunicorn -w 4 -b 0.0.0.0:$PORT app:app
+    #
+    # Biến môi trường (đều có giá trị mặc định an toàn):
+    #
+    #     HOST         mặc định 127.0.0.1 — đổi thành 0.0.0.0 nếu muốn
+    #                  truy cập từ máy khác trong cùng mạng LAN.
+    #     PORT         mặc định 5000. Nhiều nền tảng deploy tự gán biến này.
+    #     FLASK_DEBUG  mặc định tắt. Đặt "1" khi cần debug — KHÔNG bật
+    #                  khi đã deploy.
     app.run(
-        debug=True,
-        host="127.0.0.1",
-        port=5000
+        debug=os.getenv("FLASK_DEBUG", "0") == "1",
+        host=os.getenv("HOST", "127.0.0.1"),
+        port=int(os.getenv("PORT", "5000"))
     )

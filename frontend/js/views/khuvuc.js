@@ -6,21 +6,27 @@ App.views.khuvuc = {
   _rows: [],
 
   async render() {
+    const U = App.ui;
     App.router.setTitle("Quản lý khu vực");
-    App.router.setContent(`
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span>Danh sách khu vực</span>
-          <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" data-action="sync"><i class="bi bi-arrow-repeat me-1"></i>Đồng bộ</button>
-            ${App.ui.addButton("Thêm khu vực")}
-          </div>
-        </div>
-        <div class="card-body" id="khuvuc-table">${App.ui.spinner()}</div>
-      </div>`);
+
+    App.router.setContent(
+      U.card({
+        title: "Danh sách khu vực",
+        note: "Số xe hiện tại do hệ thống tự đếm, bấm Đồng bộ để cập nhật lại",
+        actions: `
+          <button class="xp-btn xp-btn-outline" data-action="sync">
+            ${App.icons.svg("refresh", 15)}Đồng bộ
+          </button>
+          ${U.addButton("Thêm khu vực")}`,
+        flush: true,
+        body: `<div id="khuvuc-table">${U.spinner()}</div>`,
+      })
+    );
+
     document.querySelector('[data-action="add"]').addEventListener("click", () => this.openForm(null));
     document.querySelector('[data-action="sync"]').addEventListener("click", () => this.sync());
     document.getElementById("khuvuc-table").addEventListener("click", (e) => this._onAction(e));
+
     await this.load();
   },
 
@@ -30,21 +36,29 @@ App.views.khuvuc = {
       this._rows = res.data || [];
       this.draw();
     } catch (err) {
-      document.getElementById("khuvuc-table").innerHTML =
-        `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      document.getElementById("khuvuc-table").innerHTML = App.ui.alertLoi(err);
     }
   },
 
   draw() {
-    document.getElementById("khuvuc-table").innerHTML = App.ui.table(
+    const U = App.ui;
+    document.getElementById("khuvuc-table").innerHTML = U.table(
       [
         { label: "Mã", key: "makhuvuc" },
-        { label: "Tên khu vực", key: "tenkhuvuc" },
+        { label: "Tên khu vực", key: "tenkhuvuc", strong: true },
         { label: "Tổng số vị trí", key: "tongsovitri" },
-        { label: "Số xe hiện tại", key: "soxehientai" },
-        { label: "", key: "makhuvuc", render: (v) => App.ui.actionButtons(v) },
+        {
+          label: "Số xe hiện tại",
+          key: "soxehientai",
+          render: (v, row) => {
+            const day = (row.tongsovitri ?? 0) > 0 && (v ?? 0) >= row.tongsovitri;
+            return day ? U.badge(v ?? 0, "warn") : String(v ?? 0);
+          },
+        },
+        { label: "", key: "makhuvuc", act: true, render: (v) => U.actionButtons(v) },
       ],
-      this._rows
+      this._rows,
+      "Chưa có khu vực nào."
     );
   },
 
@@ -53,46 +67,51 @@ App.views.khuvuc = {
     if (!btn) return;
     const id = btn.dataset.id;
     if (btn.dataset.action === "edit") {
-      const row = this._rows.find((r) => String(r.makhuvuc) === String(id));
-      this.openForm(row);
+      this.openForm(this._rows.find((r) => String(r.makhuvuc) === String(id)));
     } else if (btn.dataset.action === "delete") {
       this.remove(id);
     }
   },
 
   openForm(row) {
-    const isEdit = !!row;
-    const modal = App.ui.modal({
-      title: isEdit ? "Sửa khu vực" : "Thêm khu vực",
+    const U = App.ui;
+    const sua = !!row;
+
+    const modal = U.modal({
+      title: sua ? "Sửa khu vực" : "Thêm khu vực",
       body: `
         <form id="kv-form">
-          <div class="mb-3">
-            <label class="form-label">Tên khu vực</label>
-            <input type="text" class="form-control" name="tenkhuvuc" value="${App.ui.escape(row?.tenkhuvuc || "")}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Tổng số vị trí</label>
-            <input type="number" class="form-control" name="tongsovitri" min="0" value="${row?.tongsovitri ?? 0}" required>
-          </div>
+          ${U.field("Tên khu vực", U.input({
+            name: "tenkhuvuc",
+            value: row?.tenkhuvuc || "",
+            placeholder: "VD: Khu A",
+            required: true,
+          }))}
+          ${U.field("Tổng số vị trí", U.input({
+            name: "tongsovitri",
+            type: "number",
+            min: 0,
+            value: row?.tongsovitri ?? 0,
+            required: true,
+          }), "Số chỗ đỗ mà khu vực này có")}
         </form>`,
-      footer: App.ui.formButtons(),
+      footer: U.formButtons(),
     });
     modal.show();
 
+    modal.find('[data-action="cancel"]').addEventListener("click", () => modal.hide());
     modal.find('[data-action="save"]').addEventListener("click", async () => {
       const fd = new FormData(modal.find("#kv-form"));
       const body = {
-        tenkhuvuc: fd.get("tenkhuvuc").trim(),
+        tenkhuvuc: String(fd.get("tenkhuvuc") || "").trim(),
         tongsovitri: Number(fd.get("tongsovitri")),
       };
       try {
-        if (isEdit) {
-          await App.api.put(`/api/khuvuc/${row.makhuvuc}`, body);
-        } else {
-          await App.api.post("/api/khuvuc", body);
-        }
+        if (sua) await App.api.put(`/api/khuvuc/${row.makhuvuc}`, body);
+        else await App.api.post("/api/khuvuc", body);
+
         modal.hide();
-        App.ui.toast(isEdit ? "Đã cập nhật khu vực." : "Đã thêm khu vực.");
+        App.ui.toast(sua ? "Đã cập nhật khu vực." : "Đã thêm khu vực.");
         await this.load();
       } catch (err) {
         App.ui.toast(err.message, "danger");
@@ -101,7 +120,15 @@ App.views.khuvuc = {
   },
 
   async remove(id) {
-    if (!confirm("Xóa khu vực này?")) return;
+    const row = this._rows.find((r) => String(r.makhuvuc) === String(id));
+    const dongY = await App.ui.confirm({
+      title: "Xóa khu vực",
+      message: `Xóa khu vực “${row ? row.tenkhuvuc : id}”? Các vị trí đỗ thuộc khu vực này có thể bị ảnh hưởng.`,
+      okLabel: "Xóa",
+      tone: "err",
+    });
+    if (!dongY) return;
+
     try {
       await App.api.del(`/api/khuvuc/${id}`);
       App.ui.toast("Đã xóa khu vực.");

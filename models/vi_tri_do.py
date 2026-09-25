@@ -2,16 +2,16 @@ class ViTriDo:
     def __init__(
         self,
         maViTri=None,
-        tenKhuVuc=None,
+        maKhuVuc=None,
         trangThai=None
     ):
         self.maViTri = maViTri
-        self.tenKhuVuc = tenKhuVuc
+        self.maKhuVuc = maKhuVuc
         self.trangThai = trangThai
 
     def to_dict(self):
         return {
             "mavitri": self.maViTri,
-            "tenkhuvuc": self.tenKhuVuc,
+            "makhuvuc": self.maKhuVuc,
             "trangthai": self.trangThai
         }

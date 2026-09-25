@@ -31,9 +31,9 @@ class ViTriService:
         return response.data[0]
 
     @staticmethod
-    def create(ten_khu_vuc, trang_thai=None):
+    def create(ma_khu_vuc, trang_thai=None):
         data = {
-            "tenkhuvuc": ten_khu_vuc
+            "makhuvuc": ma_khu_vuc
         }
 
         if trang_thai is not None:
@@ -49,9 +49,9 @@ class ViTriService:
         return response.data
 
     @staticmethod
-    def update(ma_vi_tri, ten_khu_vuc, trang_thai):
+    def update(ma_vi_tri, ma_khu_vuc, trang_thai):
         data = {
-            "tenkhuvuc": ten_khu_vuc,
+            "makhuvuc": ma_khu_vuc,
             "trangthai": trang_thai
         }
 

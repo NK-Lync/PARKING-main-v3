@@ -3,6 +3,7 @@ from flask import Blueprint, request, Response
 import json
 import os
 import tempfile
+import traceback
 
 from services.parking_service import ParkingService
 from services.loai_xe_service import LoaiXeService
@@ -808,6 +809,10 @@ def ai_vehicle_entry():
 
     except Exception as e:
 
+        # In traceback ra console: không có nó thì lỗi 500 ở đây
+        # chỉ hiện một câu chung chung, không biết hỏng ở đâu.
+        traceback.print_exc()
+
         return json_response(
             {
                 "success": False,
@@ -1032,6 +1037,8 @@ def ai_vehicle_exit():
 
     except Exception as e:
 
+        traceback.print_exc()
+
         return json_response(
             {
                 "success": False,
@@ -1230,6 +1237,8 @@ def ai_parking_status():
         )
 
     except Exception as e:
+
+        traceback.print_exc()
 
         return json_response(
             {

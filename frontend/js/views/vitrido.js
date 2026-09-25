@@ -1,23 +1,41 @@
 // ============================================================
 // views/vitrido.js — quản lý vị trí đỗ (CRUD)
+// ------------------------------------------------------------
+// Bảng vitrido chỉ lưu khóa ngoại makhuvuc, nên tên khu vực phải
+// tra qua danh sách khu vực tải song song.
 // ============================================================
 
 App.views.vitrido = {
   _rows: [],
+  _khuvuc: [],
 
   async render() {
+    const U = App.ui;
     App.router.setTitle("Quản lý vị trí đỗ");
-    App.router.setContent(`
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span>Danh sách vị trí đỗ</span>
-          ${App.ui.addButton("Thêm vị trí")}
-        </div>
-        <div class="card-body" id="vitrido-table">${App.ui.spinner()}</div>
-      </div>`);
+
+    App.router.setContent(
+      U.card({
+        title: "Danh sách vị trí đỗ",
+        note: "Trạng thái vị trí được hệ thống cập nhật khi xe vào và ra bãi",
+        actions: U.addButton("Thêm vị trí"),
+        flush: true,
+        body: `<div id="vitrido-table">${U.spinner()}</div>`,
+      })
+    );
+
     document.querySelector('[data-action="add"]').addEventListener("click", () => this.openForm(null));
     document.getElementById("vitrido-table").addEventListener("click", (e) => this._onAction(e));
-    await this.load();
+
+    await Promise.all([this.loadKhuvuc(), this.load()]);
+  },
+
+  async loadKhuvuc() {
+    try {
+      const res = await App.api.get("/api/khuvuc");
+      this._khuvuc = res.data || [];
+    } catch (err) {
+      this._khuvuc = [];
+    }
   },
 
   async load() {
@@ -26,20 +44,26 @@ App.views.vitrido = {
       this._rows = res.data || [];
       this.draw();
     } catch (err) {
-      document.getElementById("vitrido-table").innerHTML =
-        `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      document.getElementById("vitrido-table").innerHTML = App.ui.alertLoi(err);
     }
   },
 
+  _tenKhuVuc(id) {
+    const k = this._khuvuc.find((x) => String(x.makhuvuc) === String(id));
+    return k ? k.tenkhuvuc : (id ?? "—");
+  },
+
   draw() {
-    document.getElementById("vitrido-table").innerHTML = App.ui.table(
+    const U = App.ui;
+    document.getElementById("vitrido-table").innerHTML = U.table(
       [
-        { label: "Mã vị trí", key: "mavitri" },
-        { label: "Khu vực", key: "tenkhuvuc" },
-        { label: "Trạng thái", key: "trangthai", render: (v) => App.ui.statusBadge(v) },
-        { label: "", key: "mavitri", render: (v) => App.ui.actionButtons(v) },
+        { label: "Mã vị trí", key: "mavitri", strong: true },
+        { label: "Khu vực", key: "makhuvuc", render: (v) => U.escape(this._tenKhuVuc(v)) },
+        { label: "Trạng thái", key: "trangthai", render: (v) => U.statusBadge(v) },
+        { label: "", key: "mavitri", act: true, render: (v) => U.actionButtons(v) },
       ],
-      this._rows
+      this._rows,
+      "Chưa có vị trí đỗ nào."
     );
   },
 
@@ -48,50 +72,51 @@ App.views.vitrido = {
     if (!btn) return;
     const id = btn.dataset.id;
     if (btn.dataset.action === "edit") {
-      const row = this._rows.find((r) => String(r.mavitri) === String(id));
-      this.openForm(row);
+      this.openForm(this._rows.find((r) => String(r.mavitri) === String(id)));
     } else if (btn.dataset.action === "delete") {
       this.remove(id);
     }
   },
 
   openForm(row) {
-    const isEdit = !!row;
-    const statusOptions = App.config.TRANG_THAI_VI_TRI
-      .map((s) => `<option value="${s}" ${row && row.trangthai === s ? "selected" : ""}>${s}</option>`)
-      .join("");
+    const U = App.ui;
+    const sua = !!row;
 
-    const modal = App.ui.modal({
-      title: isEdit ? "Sửa vị trí đỗ" : "Thêm vị trí đỗ",
+    const modal = U.modal({
+      title: sua ? "Sửa vị trí đỗ" : "Thêm vị trí đỗ",
       body: `
         <form id="vt-form">
-          <div class="mb-3">
-            <label class="form-label">Tên khu vực</label>
-            <input type="text" class="form-control" name="tenkhuvuc" value="${App.ui.escape(row?.tenkhuvuc || "")}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Trạng thái</label>
-            <select class="form-select" name="trangthai">${statusOptions}</select>
-          </div>
+          ${U.field("Khu vực", U.select({
+            name: "makhuvuc",
+            value: row?.makhuvuc ?? "",
+            placeholder: "— Chọn khu vực —",
+            required: true,
+            options: this._khuvuc.map((k) => ({ value: k.makhuvuc, label: k.tenkhuvuc })),
+          }))}
+          ${U.field("Trạng thái", U.select({
+            name: "trangthai",
+            value: row?.trangthai ?? App.config.TRANG_THAI_VI_TRI[0],
+            required: true,
+            options: App.config.TRANG_THAI_VI_TRI.map((t) => ({ value: t, label: t })),
+          }), "Đặt về “Còn trống” nếu vị trí đang bị kẹt trạng thái")}
         </form>`,
-      footer: App.ui.formButtons(),
+      footer: U.formButtons(),
     });
     modal.show();
 
+    modal.find('[data-action="cancel"]').addEventListener("click", () => modal.hide());
     modal.find('[data-action="save"]').addEventListener("click", async () => {
       const fd = new FormData(modal.find("#vt-form"));
       const body = {
-        tenkhuvuc: fd.get("tenkhuvuc").trim(),
-        trangthai: fd.get("trangthai"),
+        makhuvuc: Number(fd.get("makhuvuc")),
+        trangthai: String(fd.get("trangthai") || ""),
       };
       try {
-        if (isEdit) {
-          await App.api.put(`/api/vitrido/${row.mavitri}`, body);
-        } else {
-          await App.api.post("/api/vitrido", body);
-        }
+        if (sua) await App.api.put(`/api/vitrido/${row.mavitri}`, body);
+        else await App.api.post("/api/vitrido", body);
+
         modal.hide();
-        App.ui.toast(isEdit ? "Đã cập nhật vị trí." : "Đã thêm vị trí.");
+        App.ui.toast(sua ? "Đã cập nhật vị trí." : "Đã thêm vị trí.");
         await this.load();
       } catch (err) {
         App.ui.toast(err.message, "danger");
@@ -100,10 +125,17 @@ App.views.vitrido = {
   },
 
   async remove(id) {
-    if (!confirm("Xóa vị trí đỗ này?")) return;
+    const dongY = await App.ui.confirm({
+      title: "Xóa vị trí đỗ",
+      message: `Xóa vị trí #${id}? Lượt gửi xe đang gắn với vị trí này có thể bị ảnh hưởng.`,
+      okLabel: "Xóa",
+      tone: "err",
+    });
+    if (!dongY) return;
+
     try {
       await App.api.del(`/api/vitrido/${id}`);
-      App.ui.toast("Đã xóa vị trí đỗ.");
+      App.ui.toast("Đã xóa vị trí.");
       await this.load();
     } catch (err) {
       App.ui.toast(err.message, "danger");

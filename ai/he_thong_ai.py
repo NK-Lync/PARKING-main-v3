@@ -42,8 +42,21 @@ class HeThongAI(IAIProvider):
     # GỌI API CHAT COMPLETIONS
     # ============================================================
     def _chat(self, system_prompt, user_prompt):
+        """
+        Gọi endpoint chat/completions.
+
+        Trả về một cặp (noi_dung, loi):
+
+            thành công      → (văn bản, None)
+            không có key    → (None, None)   chế độ nội bộ, không phải lỗi
+            gọi thất bại    → (None, mô tả lỗi)
+
+        Bản trước nuốt mọi exception rồi trả None, khiến key sai hoặc
+        hết hạn trông y hệt như không cấu hình key. Tách riêng hai
+        trường hợp để lỗi cấu hình không bị che.
+        """
         if not self.api_key:
-            return None
+            return None, None
 
         try:
             response = requests.post(
@@ -67,13 +80,43 @@ class HeThongAI(IAIProvider):
 
             payload = response.json()
 
-            return (
+            noi_dung = (
                 payload["choices"][0]["message"]["content"]
                 .strip()
             )
 
-        except Exception:
+            return noi_dung, None
+
+        except requests.HTTPError as e:
+            chi_tiet = ""
+
+            if e.response is not None:
+                chi_tiet = f" — {e.response.text[:300]}"
+
+            return None, (
+                f"HTTP {e.response.status_code}{chi_tiet}"
+                if e.response is not None
+                else str(e)
+            )
+
+        except Exception as e:
+            return None, f"{type(e).__name__}: {e}"
+
+    @staticmethod
+    def _canh_bao_loi_genai(loi):
+        """
+        Thông điệp cảnh báo khi có key nhưng không gọi được GenAI.
+
+        Trả về None khi không có lỗi (hoặc khi chưa cấu hình key — đó
+        là chế độ nội bộ bình thường, không cần cảnh báo).
+        """
+        if not loi:
             return None
+
+        return (
+            "Đã cấu hình AI_API_KEY nhưng không gọi được dịch vụ GenAI, "
+            f"hệ thống dùng phân tích nội bộ. Chi tiết: {loi}"
+        )
 
     # ============================================================
     # IAIProvider: SINH BÁO CÁO LƯU LƯỢNG
@@ -90,7 +133,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -103,7 +146,7 @@ class HeThongAI(IAIProvider):
         # Fallback nội bộ (không cần API).
         tong_luot = data.get("tong_luot_gui", 0)
 
-        return {
+        ket_qua = {
             "success": True,
             "nguon": "noi-bo",
             "model": self.model_name,
@@ -114,6 +157,13 @@ class HeThongAI(IAIProvider):
                 "dữ liệu nghiệp vụ lưu trữ trên hệ thống."
             )
         }
+
+        canh_bao = self._canh_bao_loi_genai(loi_genai)
+
+        if canh_bao:
+            ket_qua["canh_bao"] = canh_bao
+
+        return ket_qua
 
     # ============================================================
     # IAIProvider: PHÂN TÍCH GIỜ CAO ĐIỂM
@@ -131,7 +181,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -157,12 +207,19 @@ class HeThongAI(IAIProvider):
                 "Chưa đủ dữ liệu để xác định giờ cao điểm."
             )
 
-        return {
+        ket_qua = {
             "success": True,
             "nguon": "noi-bo",
             "model": self.model_name,
             "noi_dung": noi_dung
         }
+
+        canh_bao = self._canh_bao_loi_genai(loi_genai)
+
+        if canh_bao:
+            ket_qua["canh_bao"] = canh_bao
+
+        return ket_qua
 
     # ============================================================
     # IAIProvider: GỢI Ý BỐ TRÍ NHÂN SỰ
@@ -179,7 +236,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -204,12 +261,19 @@ class HeThongAI(IAIProvider):
                 "Chưa đủ dữ liệu để gợi ý bố trí nhân sự."
             )
 
-        return {
+        ket_qua = {
             "success": True,
             "nguon": "noi-bo",
             "model": self.model_name,
             "noi_dung": noi_dung
         }
+
+        canh_bao = self._canh_bao_loi_genai(loi_genai)
+
+        if canh_bao:
+            ket_qua["canh_bao"] = canh_bao
+
+        return ket_qua
 
     # ============================================================
     # IAIProvider: HỎI ĐÁP DỮ LIỆU
@@ -227,7 +291,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(context, ensure_ascii=False)}"
         )
 
-        genai_text = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -241,13 +305,20 @@ class HeThongAI(IAIProvider):
         # Fallback nội bộ: trả lời theo từ khóa đơn giản.
         cau_tra_loi = self._tra_loi_noi_bo(question, context)
 
-        return {
+        ket_qua = {
             "success": True,
             "nguon": "noi-bo",
             "model": self.model_name,
             "cau_hoi": question,
             "cau_tra_loi": cau_tra_loi
         }
+
+        canh_bao = self._canh_bao_loi_genai(loi_genai)
+
+        if canh_bao:
+            ket_qua["canh_bao"] = canh_bao
+
+        return ket_qua
 
     def _tra_loi_noi_bo(self, question, context):
         q = question.lower()

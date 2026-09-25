@@ -1,9 +1,24 @@
+import os
+
 from ultralytics import YOLO
+
+from ai.duong_dan import duong_dan
 
 
 class VehicleDetector:
 
-    def __init__(self, model_path="yolo11n.pt"):
+    def __init__(self, model_path=None):
+        if model_path is None:
+            model_path = "yolo11n.pt"
+
+        # Neo vào gốc dự án, không tính theo thư mục đang đứng.
+        model_path = duong_dan(model_path)
+
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(
+                f"Không tìm thấy model phát hiện xe: {model_path}"
+            )
+
         self.model = YOLO(model_path)
 
     def detect(self, image):

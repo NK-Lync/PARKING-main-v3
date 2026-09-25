@@ -1,0 +1,15 @@
+{
+  "ghi_chu": "Ảnh mẫu trích từ bộ dữ liệu đã huấn luyện model biển số (archive/images/train). Bộ dữ liệu này KHÔNG kèm file nhãn, nên không có biển số đúng để đối chiếu; trường bienso_ai chỉ là kết quả AI đọc được, không phải biển số thật của xe.",
+  "mau": [
+    { "file": "carlong_0989.png", "loaixe": "Ô tô", "bienso_ai": "30V3993" },
+    { "file": "carlong_0196.png", "loaixe": "Ô tô", "bienso_ai": "61A01204" },
+    { "file": "carlong_0372.png", "loaixe": "Ô tô", "bienso_ai": "61C51008" },
+    { "file": "carlong_0526.png", "loaixe": "Ô tô", "bienso_ai": "61F69545" },
+    { "file": "carlong_0838.png", "loaixe": "Ô tô", "bienso_ai": "0618" },
+    { "file": "greenpack_0106.png", "loaixe": "Xe máy", "bienso_ai": "16555" },
+    { "file": "greenpack_0049.png", "loaixe": "Xe máy", "bienso_ai": "6273" },
+    { "file": "greenpack_0245.png", "loaixe": "Xe máy", "bienso_ai": "42323" },
+    { "file": "greenpack_0282.png", "loaixe": "Xe máy", "bienso_ai": "1976" },
+    { "file": "Dieu_0491.png", "loaixe": "Xe máy", "bienso_ai": "60" }
+  ]
+}
