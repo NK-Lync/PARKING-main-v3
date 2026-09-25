@@ -1,13 +1,15 @@
 # XeParking — Hệ thống quản lý bãi đỗ xe có tích hợp AI
 
-Backend API (Flask) của hệ thống quản lý bãi đỗ xe tích hợp AI, phục vụ đồ án
-**Ứng dụng trí tuệ nhân tạo — Bãi đỗ xe AI** (Nhóm 19).
+Hệ thống quản lý bãi đỗ xe tích hợp AI, gồm **backend API (Flask)** và **giao diện
+web (SPA JavaScript thuần)**, phục vụ đồ án **Ứng dụng trí tuệ nhân tạo — Bãi đỗ xe
+AI** (Nhóm 19).
 
 ## Công nghệ chính
 
 | Thành phần | Công nghệ |
 |---|---|
 | Backend API | Python 3.14 + Flask |
+| Giao diện | HTML/CSS/JS thuần (SPA) — **không bước build**, không CDN |
 | Cơ sở dữ liệu | **Supabase (PostgreSQL)** qua REST API |
 | Nhận diện phương tiện | YOLO11 (Ultralytics) + OpenCV |
 | Nhận diện biển số | YOLO11 (model tự huấn luyện) + EasyOCR |
@@ -20,6 +22,8 @@ Backend API (Flask) của hệ thống quản lý bãi đỗ xe tích hợp AI, 
 ## Kiến trúc
 
 ```
+Giao diện (frontend/ — SPA JavaScript, gọi /api/*)
+    ↓  JSON
 Routes (Flask Blueprint)
     ↓
 Services (nghiệp vụ — nguồn sự thật)
@@ -29,6 +33,7 @@ Database (Supabase / PostgreSQL)
 AI (phát hiện & đề xuất, không ghi đè nghiệp vụ)
 ```
 
+- **Giao diện** (`frontend/`): SPA phục vụ tĩnh từ Flask, không có bước build.
 - **Routes** (`routes/`): khai báo các Blueprint và API endpoints.
 - **Services** (`services/`): chứa toàn bộ quy tắc nghiệp vụ.
 - **Database** (`database/`): kết nối Supabase + schema + dữ liệu mẫu.
@@ -47,8 +52,8 @@ tự nhận biết đang chạy ở luồng nào.
 ### Dành cho người tải bản public
 
 ```bash
-git clone https://github.com/NK-Lync/PARKING-main-v2.git
-cd "PARKING-main-v2"
+git clone https://github.com/NK-Lync/PARKING-main-v3.git
+cd "PARKING-main-v3"
 ```
 
 **Windows:**
@@ -75,8 +80,8 @@ Supabase project riêng** và điền credentials — xem [Cấu hình](#cấu-h
 Nhóm dùng thêm một repo private chứa `.env` thật và model tự huấn luyện:
 
 ```bash
-git clone https://github.com/NK-Lync/PARKING-main-v2.git
-cd "PARKING-main-v2"
+git clone https://github.com/NK-Lync/PARKING-main-v3.git
+cd "PARKING-main-v3"
 git clone https://github.com/NK-Lync/PARKING-main-v2-private.git _private
 ```
 
@@ -196,6 +201,54 @@ Biến môi trường khi chạy `python app.py`:
 | `PORT` | `5000` | Cổng lắng nghe |
 | `FLASK_DEBUG` | tắt | Đặt `1` để bật debug — **không bật khi đã deploy** |
 
+## Giao diện web
+
+Toàn bộ giao diện nằm trong `frontend/` và được Flask phục vụ tĩnh. Đây là **SPA
+JavaScript thuần**: không React/Vue, không npm, **không có bước build**. Sửa file
+là chạy được ngay, không cần biên dịch lại.
+
+Điều hướng bằng hash (`#/dashboard`, `#/entry`, …) nên đổi màn không tải lại trang.
+Gồm màn đăng nhập và 12 màn nghiệp vụ: bảng điều khiển, sơ đồ chỗ trống, xe vào, xe
+ra, lịch sử, thống kê, vé tháng, khu vực, vị trí đỗ, loại xe, tài khoản, trợ lý AI.
+
+### Không phụ thuộc Internet
+
+Mọi tài nguyên đều nằm trong repo — chữ, icon, thư viện biểu đồ:
+
+| Tài nguyên | Vị trí | Ghi chú |
+|---|---|---|
+| Bộ thiết kế | `frontend/css/xp.css` | ~32 KB, màu khai báo một lần ở `:root` |
+| Chữ | `frontend/css/fonts.css` + `vendor/fonts/` | Be Vietnam Pro, 12 tệp `woff2`, ~212 KB |
+| Icon | `frontend/js/icons.js` | 39 icon SVG vẽ thẳng, ăn theo màu chữ |
+| Biểu đồ | `frontend/vendor/chart.umd.min.js` | Chart.js 4.4.1 bản UMD |
+
+Nhờ vậy giao diện chạy được khi mất mạng. Khi thêm tài nguyên mới, **đừng** thêm
+thẻ `<link>`/`<script src="https://...">` — hãy tải về `frontend/vendor/`.
+
+### Quy ước màu trạng thái
+
+Màu mang nghĩa, không phải trang trí:
+
+- **Xanh** = tốt: chỗ còn trống, xe đã ra, vé còn hiệu lực.
+- **Hổ phách** = đang chiếm chỗ: đang gửi, đang sử dụng, bãi gần đầy.
+- **Đỏ chỉ dành cho lỗi.** Cố ý không dùng đỏ cho trạng thái nghiệp vụ.
+
+### Câu trả lời của AI
+
+AI trả về văn bản Markdown. `frontend/js/md.js` chuyển nó thành HTML (tiêu đề, danh
+sách, chữ đậm, bảng) để đọc như một văn bản hoàn chỉnh thay vì hiện thô các dấu
+`###` và `**`. Nội dung AI là **dữ liệu không tin cậy**, nên hàm này thoát ký tự
+HTML **trước** rồi mới chèn thẻ — không được đảo thứ tự đó.
+
+### Ghi chú khi sửa giao diện
+
+Đổi hash trên thanh địa chỉ là điều hướng cùng trang, trình duyệt **không nạp lại**
+JS/CSS. Sửa file xong mà chỉ đổi hash thì vẫn chạy code cũ — phải F5 thật rồi mới
+kiểm tra.
+
+Đặc tả đầy đủ về hệ thống thiết kế, các chỗ lệch có chủ ý và những gì chưa làm:
+`docs/superpowers/specs/2026-09-26-viet-lai-frontend-design.md`.
+
 ## Triển khai (deploy)
 
 Backend là một Flask app thuần, không phụ thuộc trạng thái local, nên deploy được
@@ -295,7 +348,14 @@ PARKING-main v3/
 ├── database/               # Kết nối Supabase, schema.sql, seed.sql,
 │                           #   quyen_truy_cap.sql, migrate_khuvuc.sql
 ├── config/                 # Cấu hình vị trí đỗ (parking_slots.json)
-├── docs/                   # Tài liệu kiến trúc và skills
+├── frontend/               # Giao diện SPA (phục vụ tĩnh, không build)
+│   ├── index.html          #   Khung trang + nạp script theo thứ tự
+│   ├── css/                #   xp.css (bộ thiết kế), fonts.css
+│   ├── js/                 #   ui, router, api, auth, charts, camera, md, icons
+│   │   └── views/          #   13 màn, mỗi màn một tệp
+│   ├── img/mau/            #   Ảnh mẫu để thử nhận diện biển số
+│   └── vendor/             #   Chart.js + 12 tệp chữ (không dùng CDN)
+├── docs/                   # Tài liệu kiến trúc, skills và đặc tả thiết kế
 ├── .env.example            # Mẫu cấu hình môi trường
 └── requirements.txt        # Danh sách thư viện
 
