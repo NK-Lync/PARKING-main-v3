@@ -56,16 +56,14 @@ COMMENT ON TABLE khuvuc IS 'Khu vực đỗ xe trong bãi';
 -- ============================================================
 -- 3. BẢNG VITRIDO (vị trí đỗ)
 -- ============================================================
--- ViTriDo thuộc về một KhuVuc. Trong phiên bản hiện tại, mối
--- quan hệ được lưu qua tên khu vực (tenkhuvuc) để tương thích
--- với dữ liệu nghiệp vụ đang có (xem chú thích ở cuối file).
+-- ViTriDo thuộc về một KhuVuc thông qua khóa ngoại makhuvuc.
 -- ============================================================
 CREATE TABLE IF NOT EXISTS vitrido (
     mavitri       SERIAL PRIMARY KEY,
-    tenkhuvuc     VARCHAR(100) NOT NULL,
+    makhuvuc      INTEGER NOT NULL,
     trangthai     VARCHAR(20)  NOT NULL DEFAULT 'Còn trống',
     CONSTRAINT fk_vitrido_khuvuc
-        FOREIGN KEY (tenkhuvuc) REFERENCES khuvuc(tenkhuvuc),
+        FOREIGN KEY (makhuvuc) REFERENCES khuvuc(makhuvuc),
     CONSTRAINT chk_vitrido_trangthai
         CHECK (trangthai IN ('Còn trống', 'Đang sử dụng'))
 );
@@ -154,14 +152,5 @@ COMMENT ON TABLE taikhoan IS 'Tài khoản người dùng hệ thống (đăng n
 
 
 -- ============================================================
--- (TÙY CHỌN) Chuẩn hóa vitrido -> khuvuc bằng khóa ngoại makuvuc
--- ============================================================
--- Mô hình lớp OOD dùng maKhuVuc (int) cho quan hệ ViTriDo → KhuVuc.
--- Phiên bản hiện tại giữ tenkhuvuc (chuỗi) để không phá vỡ dữ liệu
--- nghiệp vụ đang có. Nếu muốn chuẩn hóa đúng OOD, bỏ comment:
---
---   ALTER TABLE vitrido
---       ADD COLUMN makuvuc INTEGER REFERENCES khuvuc(makhuvuc);
---
--- rồi cập nhật dữ liệu tương ứng.
+-- Kết thúc Schema cơ sở dữ liệu (đã chuẩn hóa vitrido.makhuvuc)
 -- ============================================================

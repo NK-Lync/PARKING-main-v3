@@ -57,9 +57,6 @@ def get_vi_tri(ma_vi_tri):
                 "message": "Không tìm thấy vị trí đỗ"
             }), 404
 
-        print("DEBUG data:", data)
-        print("DEBUG trangthai:", repr(data["trangthai"]))
-
         return json_response({
             "success": True,
             "data": data
@@ -86,17 +83,17 @@ def create_vi_tri():
                 "message": "Dữ liệu JSON không hợp lệ"
             }), 400
 
-        ten_khu_vuc = data.get("tenkhuvuc")
+        ma_khu_vuc = data.get("makhuvuc")
         trang_thai = data.get("trangthai")
 
-        if not ten_khu_vuc:
+        if ma_khu_vuc is None:
             return json_response({
                 "success": False,
-                "message": "Thiếu tenkhuvuc"
+                "message": "Thiếu makhuvuc"
             }), 400
 
         result = ViTriService.create(
-            ten_khu_vuc,
+            ma_khu_vuc,
             trang_thai
         )
 
@@ -127,18 +124,18 @@ def update_vi_tri(ma_vi_tri):
                 "message": "Dữ liệu JSON không hợp lệ"
             }), 400
 
-        ten_khu_vuc = data.get("tenkhuvuc")
+        ma_khu_vuc = data.get("makhuvuc")
         trang_thai = data.get("trangthai")
 
-        if not ten_khu_vuc or trang_thai is None:
+        if ma_khu_vuc is None or trang_thai is None:
             return json_response({
                 "success": False,
-                "message": "Thiếu tenkhuvuc hoặc trangthai"
+                "message": "Thiếu makhuvuc hoặc trangthai"
             }), 400
 
         result = ViTriService.update(
             ma_vi_tri,
-            ten_khu_vuc,
+            ma_khu_vuc,
             trang_thai
         )
 

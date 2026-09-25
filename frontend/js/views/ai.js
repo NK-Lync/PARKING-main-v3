@@ -1,39 +1,64 @@
 // ============================================================
 // views/ai.js — AI hỗ trợ phân tích (GenAI)
+// ------------------------------------------------------------
+// Ba phân tích dựng sẵn, cộng một ô hỏi đáp tự do. Câu trả lời có
+// thể do Gemini sinh ra hoặc do lớp phân tích nội bộ tính, nên
+// mỗi kết quả đều ghi rõ nguồn.
 // ============================================================
 
 App.views.ai = {
+  _phanTich: [
+    {
+      key: "bao-cao",
+      title: "Báo cáo lưu lượng",
+      desc: "Tổng hợp số liệu lượt xe gửi thành báo cáo ngắn gọn.",
+      icon: "file",
+      path: "/api/ai/bao-cao-luu-luong",
+    },
+    {
+      key: "gio-cao-diem",
+      title: "Phân tích giờ cao điểm",
+      desc: "Xác định khung giờ có lưu lượng xe cao nhất.",
+      icon: "trending",
+      path: "/api/ai/gio-cao-diem",
+    },
+    {
+      key: "nhan-su",
+      title: "Gợi ý bố trí nhân sự",
+      desc: "Đề xuất bố trí nhân viên theo lưu lượng từng khung giờ.",
+      icon: "users",
+      path: "/api/ai/goi-y-nhan-su",
+    },
+  ],
+
   async render() {
+    const U = App.ui;
     App.router.setTitle("AI hỗ trợ");
+
     App.router.setContent(`
-      <div class="row g-3 mb-3">
-        ${this._actionCard("bao-cao", "Báo cáo lưu lượng", "Tổng hợp số liệu lượt xe gửi thành báo cáo ngắn gọn.", "bi-file-earmark-text")}
-        ${this._actionCard("gio-cao-diem", "Phân tích giờ cao điểm", "Xác định khung giờ có lưu lượng xe cao nhất.", "bi-graph-up-arrow")}
-        ${this._actionCard("nhan-su", "Gợi ý bố trí nhân sự", "Đề xuất bố trí nhân viên theo lưu lượng.", "bi-people")}
-      </div>
+      <div class="xp-stack">
+        <div class="xp-grid">${this._phanTich.map((p) => this._the(p)).join("")}</div>
 
-      <div class="row g-3">
-        <div class="col-lg-5">
-          <div class="card h-100">
-            <div class="card-header">Hỏi đáp dữ liệu</div>
-            <div class="card-body d-flex flex-column">
-              <p class="text-muted small">Hỏi về doanh thu, số xe đang gửi, số vị trí hoặc vé tháng.</p>
-              <div class="input-group mb-2">
-                <input type="text" class="form-control" id="ai-question" placeholder="VD: Hôm nay doanh thu bao nhiêu?">
-                <button class="btn btn-primary" id="ai-ask"><i class="bi bi-send"></i> Hỏi</button>
+        <div class="xp-split">
+          ${U.card({
+            title: "Hỏi đáp dữ liệu",
+            note: "Hỏi về doanh thu, số xe đang gửi, số vị trí hoặc vé tháng",
+            body: `
+              <div class="xp-input-group">
+                <input type="text" class="xp-input" id="ai-question"
+                       placeholder="VD: Hôm nay doanh thu bao nhiêu?">
+                <button class="xp-btn xp-btn-primary" id="ai-ask">
+                  ${App.icons.svg("send", 15)}Hỏi
+                </button>
               </div>
-              <div id="ai-answer"></div>
-            </div>
-          </div>
-        </div>
+              <div id="ai-answer" class="xp-mt"></div>`,
+          })}
 
-        <div class="col-lg-7">
-          <div class="card h-100">
-            <div class="card-header">Kết quả phân tích</div>
-            <div class="card-body">
-              <div id="ai-result" class="text-muted">Chọn một phân tích ở trên để bắt đầu.</div>
-            </div>
-          </div>
+          ${U.card({
+            title: "Kết quả phân tích",
+            note: "Do AI sinh ra, hoặc do lớp phân tích nội bộ tính khi AI hết hạn mức",
+            body: `<div id="ai-result">${U.empty("Chọn một phân tích ở trên để bắt đầu.")}</div>`,
+          })}
         </div>
       </div>`);
 
@@ -42,58 +67,59 @@ App.views.ai = {
       if (e.key === "Enter") this.ask();
     });
 
-    ["bao-cao", "gio-cao-diem", "nhan-su"].forEach((k) => {
-      document.getElementById(`ai-${k}`).addEventListener("click", () => this.runAction(k));
+    this._phanTich.forEach((p) => {
+      document.getElementById(`ai-${p.key}`).addEventListener("click", () => this.runAction(p));
     });
   },
 
-  _actionCard(key, title, desc, icon) {
+  // Thẻ mô tả một phân tích dựng sẵn.
+  _the(p) {
+    const U = App.ui;
     return `
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-body d-flex flex-column">
-            <div class="d-flex align-items-center gap-2 mb-2">
-              <i class="bi ${icon} text-primary" style="font-size:1.4rem"></i>
-              <h6 class="mb-0">${title}</h6>
-            </div>
-            <p class="text-muted small flex-grow-1">${desc}</p>
-            <button class="btn btn-outline-primary btn-sm" id="ai-${key}"><i class="bi bi-stars me-1"></i>Chạy phân tích</button>
+      <div class="xp-card">
+        <div class="xp-card-body xp-stack" style="gap:10px">
+          <div class="xp-row" style="flex-wrap:nowrap">
+            <span style="display:flex;color:var(--xp-accent)">${U.icon(p.icon, 18)}</span>
+            <span class="xp-bold">${U.escape(p.title)}</span>
+          </div>
+          <p class="xp-small xp-muted" style="margin:0">${U.escape(p.desc)}</p>
+          <div>
+            <button class="xp-btn xp-btn-outline xp-btn-sm" id="ai-${p.key}">
+              ${U.icon("sparkles", 14)}Chạy phân tích
+            </button>
           </div>
         </div>
       </div>`;
   },
 
-  _sourceBadge(r) {
+  // Nguồn của câu trả lời: Gemini hay lớp tính toán nội bộ.
+  _nguon(r) {
     if (!r || !r.nguon) return "";
     return r.nguon === "genai"
-      ? App.ui.badge("Gemini", "primary")
-      : App.ui.badge("Phân tích nội bộ", "secondary");
+      ? App.ui.badge("Gemini", "info")
+      : App.ui.badge("Phân tích nội bộ", "neutral");
   },
 
-  _renderResult(title, r) {
-    const content = r && r.noi_dung ? r.noi_dung : (r && r.cau_tra_loi);
+  _ketQua(title, r) {
+    const U = App.ui;
+    const noiDung = (r && (r.noi_dung || r.cau_tra_loi)) || "—";
     return `
-      <div class="d-flex justify-content-between align-items-center mb-2">
-        <h6 class="mb-0">${title}</h6>
-        ${this._sourceBadge(r)}
+      <div class="xp-row" style="justify-content:space-between;margin-bottom:10px">
+        <span class="xp-bold">${U.escape(title)}</span>
+        ${this._nguon(r)}
       </div>
-      <div class="bg-light p-3 rounded" style="white-space:pre-wrap">${App.ui.escape(content || "—")}</div>`;
+      <div class="xp-bubble tra-loi md">${App.md.render(noiDung)}</div>`;
   },
 
-  async runAction(key) {
+  async runAction(p) {
     const box = document.getElementById("ai-result");
     box.innerHTML = App.ui.spinner("AI đang phân tích…");
-    const map = {
-      "bao-cao": ["/api/ai/bao-cao-luu-luong", "Báo cáo lưu lượng"],
-      "gio-cao-diem": ["/api/ai/gio-cao-diem", "Phân tích giờ cao điểm"],
-      "nhan-su": ["/api/ai/goi-y-nhan-su", "Gợi ý bố trí nhân sự"],
-    };
-    const [path, title] = map[key];
+
     try {
-      const res = await App.api.post(path);
-      box.innerHTML = this._renderResult(title, res.data);
+      const res = await App.api.post(p.path);
+      box.innerHTML = this._ketQua(p.title, res.data);
     } catch (err) {
-      box.innerHTML = `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      box.innerHTML = App.ui.alertLoi(err);
     }
   },
 
@@ -104,17 +130,19 @@ App.views.ai = {
     if (!cauHoi) return;
 
     box.innerHTML = App.ui.spinner("Đang trả lời…");
+
     try {
       const res = await App.api.post("/api/ai/hoi-dap", { cau_hoi: cauHoi });
       const r = res.data || {};
       box.innerHTML = `
-        <div class="d-flex justify-content-end mb-2">
-          <span class="badge text-bg-primary">${App.ui.escape(cauHoi)}</span>
-        </div>
-        <div class="d-flex justify-content-between align-items-center mb-1">${this._sourceBadge(r)}</div>
-        <div class="bg-light p-3 rounded" style="white-space:pre-wrap">${App.ui.escape(r.cau_tra_loi || "—")}</div>`;
+        <div class="xp-stack" style="gap:10px">
+          <div class="xp-bubble cau-hoi">${App.ui.escape(cauHoi)}</div>
+          <div class="xp-row">${this._nguon(r)}</div>
+          <div class="xp-bubble tra-loi md">${App.md.render(r.cau_tra_loi || "—")}</div>
+        </div>`;
+      input.value = "";
     } catch (err) {
-      box.innerHTML = `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      box.innerHTML = App.ui.alertLoi(err);
     }
   },
 };

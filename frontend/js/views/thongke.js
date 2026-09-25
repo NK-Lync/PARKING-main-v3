@@ -1,5 +1,9 @@
 // ============================================================
 // views/thongke.js — thống kê lưu lượng & doanh thu
+// ------------------------------------------------------------
+// Không chọn ngày thì API trả số liệu của toàn bộ thời gian,
+// nên nhãn trên màn hình phải đổi theo cho khỏi hiểu nhầm là
+// "hôm nay".
 // ============================================================
 
 App.views.thongke = {
@@ -11,27 +15,7 @@ App.views.thongke = {
       const ptRes = await App.api.get("/api/thongke/phan-tich");
       const pt = ptRes.data || {};
 
-      App.router.setContent(`
-        <div class="card mb-3">
-          <div class="card-body d-flex flex-wrap align-items-center gap-3">
-            <label class="fw-semibold">Ngày thống kê</label>
-            <input type="date" class="form-control" style="max-width:200px" id="tk-ngay">
-            <button class="btn btn-outline-secondary" id="tk-clear">Tất cả</button>
-          </div>
-        </div>
-
-        <div class="row g-3 mb-3" id="tk-cards">${App.ui.spinner("Đang tải số liệu theo ngày…")}</div>
-
-        <div class="row g-3">
-          <div class="col-12">
-            <div class="card">
-              <div class="card-header">Lưu lượng xe theo giờ</div>
-              <div class="card-body">
-                <div class="chart-box"><canvas id="chart-luuluong"></canvas></div>
-              </div>
-            </div>
-          </div>
-        </div>`);
+      App.router.setContent(this._khung(pt));
 
       document.getElementById("tk-ngay").addEventListener("change", () => this.loadDaily());
       document.getElementById("tk-clear").addEventListener("click", () => {
@@ -41,13 +25,75 @@ App.views.thongke = {
 
       await this.loadDaily();
     } catch (err) {
-      App.router.setContent(`<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`);
+      App.router.setContent(App.ui.alertLoi(err));
     }
   },
 
+  _khung(pt) {
+    const U = App.ui;
+
+    return `
+      <div class="xp-stack">
+        ${U.card({
+          flush: true,
+          body: `
+            <div class="xp-card-head" style="border-bottom:0">
+              <div>
+                <div class="xp-card-title">Khoảng thời gian</div>
+                <div class="xp-card-note" id="tk-nhan">Toàn bộ thời gian</div>
+              </div>
+              <div class="xp-card-head-right">
+                <input type="date" class="xp-input" id="tk-ngay" style="width:170px">
+                <button class="xp-btn xp-btn-outline" id="tk-clear">
+                  ${App.icons.svg("refresh", 15)}Tất cả
+                </button>
+              </div>
+            </div>`,
+        })}
+
+        <div class="xp-grid cols-4" id="tk-cards">${U.spinner("Đang tải số liệu…")}</div>
+
+        ${U.card({
+          title: "Lưu lượng xe theo giờ",
+          note: "Số lượt xe vào bãi, gom theo giờ ghi nhận",
+          body: `<div class="xp-chart tall"><canvas id="chart-luuluong"></canvas></div>`,
+        })}
+
+        ${U.card({
+          title: "Tổng hợp toàn hệ thống",
+          note: "Không phụ thuộc khoảng thời gian đang chọn",
+          body: `
+            <div class="xp-grid cols-4">
+              <div>
+                <div class="xp-fig-label">Tổng lượt gửi xe</div>
+                <div class="xp-fig-value">${pt.tong_luot_gui ?? 0}</div>
+              </div>
+              <div>
+                <div class="xp-fig-label">Xe đang trong bãi</div>
+                <div class="xp-fig-value">${pt.so_xe_dang_gui ?? 0}</div>
+              </div>
+              <div>
+                <div class="xp-fig-label">Tổng số vị trí</div>
+                <div class="xp-fig-value">${pt.tong_so_vi_tri ?? 0}</div>
+              </div>
+              <div>
+                <div class="xp-fig-label">Vé tháng hiệu lực</div>
+                <div class="xp-fig-value">${pt.so_ve_thang_hieu_luc ?? 0}</div>
+              </div>
+            </div>`,
+        })}
+      </div>`;
+  },
+
   async loadDaily() {
-    const ngay = document.getElementById("tk-ngay").value;
+    const o = document.getElementById("tk-ngay");
+    const nhan = document.getElementById("tk-nhan");
+    const ngay = o.value;
     const q = ngay ? `?ngay=${ngay}` : "";
+
+    nhan.textContent = ngay
+      ? `Ngày ${App.ui.fmtDate(ngay)}`
+      : "Toàn bộ thời gian";
 
     try {
       const [llRes, dtRes] = await Promise.all([
@@ -57,50 +103,55 @@ App.views.thongke = {
       const ll = llRes.data || {};
       const dt = dtRes.data || {};
 
+      const daTra = dt.so_luot_da_tra ?? 0;
+      const doanhThu = dt.tong_doanh_thu ?? 0;
+
       document.getElementById("tk-cards").innerHTML = `
-        <div class="col-6 col-lg-3">
-          <div class="card stat-card h-100"><div class="card-body">
-            <div class="stat-label">Tổng lượt xe</div>
-            <div class="stat-value">${ll.tong_luot ?? 0}</div>
-          </div></div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card stat-card h-100"><div class="card-body">
-            <div class="stat-label">Doanh thu</div>
-            <div class="stat-value">${App.ui.fmtMoney(dt.tong_doanh_thu)}</div>
-          </div></div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card stat-card h-100"><div class="card-body">
-            <div class="stat-label">Lượt đã trả</div>
-            <div class="stat-value">${dt.so_luot_da_tra ?? 0}</div>
-          </div></div>
-        </div>
-        <div class="col-6 col-lg-3">
-          <div class="card stat-card h-100"><div class="card-body">
-            <div class="stat-label">Đơn giá trung bình</div>
-            <div class="stat-value">${dt.so_luot_da_tra ? App.ui.fmtMoney(Math.round(dt.tong_doanh_thu / dt.so_luot_da_tra)) : "—"}</div>
-          </div></div>
-        </div>`;
+        ${App.ui.stat({
+          label: "Tổng lượt xe",
+          value: ll.tong_luot ?? 0,
+          icon: "trending",
+          hint: ngay ? "trong ngày đã chọn" : "toàn bộ thời gian",
+        })}
+        ${App.ui.stat({
+          label: "Doanh thu",
+          value: App.ui.fmtMoney(doanhThu),
+          icon: "wallet",
+          hint: ngay ? "thu trong ngày" : "tổng đã thu",
+        })}
+        ${App.ui.stat({
+          label: "Lượt đã trả",
+          value: daTra,
+          tone: "ok",
+          icon: "check-circle",
+          hint: "xe đã ra khỏi bãi",
+        })}
+        ${App.ui.stat({
+          label: "Bình quân mỗi lượt",
+          value: daTra ? App.ui.fmtMoney(Math.round(doanhThu / daTra)) : "—",
+          icon: "chart",
+          hint: "doanh thu chia số lượt trả",
+        })}`;
 
       const theoGio = ll.theo_gio || {};
-      const labels = Object.keys(theoGio).map((g) => g + "h");
-      const values = Object.keys(theoGio).map((g) => theoGio[g]);
+      const gio = Object.keys(theoGio);
 
       App.charts.bar(
         "chart-luuluong",
-        labels,
-        [{
-          label: "Lượt xe vào",
-          data: values,
-          backgroundColor: "rgba(13,110,253,0.7)",
-          borderRadius: 4,
-        }],
+        gio.map((g) => g + "h"),
+        [
+          {
+            label: "Lượt xe vào",
+            data: gio.map((g) => theoGio[g]),
+            backgroundColor: App.charts.MAU.accentNhat,
+            borderRadius: 4,
+            maxBarThickness: 34,
+          },
+        ],
         "luuluong"
       );
     } catch (err) {
-      document.getElementById("tk-cards").innerHTML =
-        `<div class="col"><div class="alert alert-danger">${App.ui.escape(err.message)}</div></div>`;
+      document.getElementById("tk-cards").innerHTML = App.ui.alertLoi(err);
     }
   },
 };

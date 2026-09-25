@@ -87,21 +87,17 @@ class KhuVucService:
         """
         Liệt kê số chỗ trống của từng khu vực.
 
-        Vị trí đỗ (vitrido) được gắn với khu vực qua tên
-        khu vực (tenkhuvuc). Phương thức này đếm số vị trí
-        "Còn trống" theo từng tên khu vực rồi đối chiếu
-        với bảng khuvuc.
+        Vị trí đỗ (vitrido) được gắn với khu vực qua khóa ngoại makhuvuc.
         """
         khu_vucs = KhuVucService.get_all()
 
         if not khu_vucs:
             return []
 
-        # Đếm vị trí trống theo tenkhuvuc.
         vi_tri_response = (
             supabase
             .table("vitrido")
-            .select("tenkhuvuc, trangthai")
+            .select("makhuvuc, trangthai")
             .execute()
         )
 
@@ -111,25 +107,26 @@ class KhuVucService:
         tong_vi_tri = {}
 
         for vi_tri in vi_tri_list:
-            ten = vi_tri.get("tenkhuvuc")
-            if not ten:
+            ma_khu = vi_tri.get("makhuvuc")
+            if ma_khu is None:
                 continue
 
-            tong_vi_tri[ten] = tong_vi_tri.get(ten, 0) + 1
+            tong_vi_tri[ma_khu] = tong_vi_tri.get(ma_khu, 0) + 1
 
             if vi_tri.get("trangthai") == "Còn trống":
-                so_trong[ten] = so_trong.get(ten, 0) + 1
+                so_trong[ma_khu] = so_trong.get(ma_khu, 0) + 1
 
         result = []
 
         for khu_vuc in khu_vucs:
+            ma_khu = khu_vuc.get("makhuvuc")
             ten = khu_vuc.get("tenkhuvuc")
 
             result.append({
-                "makhuvuc": khu_vuc.get("makhuvuc"),
+                "makhuvuc": ma_khu,
                 "tenkhuvuc": ten,
-                "tong_so_vi_tri": tong_vi_tri.get(ten, 0),
-                "so_cho_trong": so_trong.get(ten, 0)
+                "tong_so_vi_tri": tong_vi_tri.get(ma_khu, 0),
+                "so_cho_trong": so_trong.get(ma_khu, 0)
             })
 
         return result
@@ -147,7 +144,6 @@ class KhuVucService:
         if not khu_vucs:
             return []
 
-        # Số xe đang gửi theo tenkhuvuc (thông qua vitrido).
         luot_response = (
             supabase
             .table("luotguixe")
@@ -167,7 +163,7 @@ class KhuVucService:
         vi_tri_response = (
             supabase
             .table("vitrido")
-            .select("mavitri, tenkhuvuc")
+            .select("mavitri, makhuvuc")
             .execute()
         )
 
@@ -177,16 +173,16 @@ class KhuVucService:
 
         for vi_tri in vi_tri_list:
             if vi_tri.get("mavitri") in ma_vi_tri_active:
-                ten = vi_tri.get("tenkhuvuc")
-                if ten:
-                    so_xe[ten] = so_xe.get(ten, 0) + 1
+                ma_khu = vi_tri.get("makhuvuc")
+                if ma_khu is not None:
+                    so_xe[ma_khu] = so_xe.get(ma_khu, 0) + 1
 
         result = []
 
         for khu_vuc in khu_vucs:
             ma = khu_vuc.get("makhuvuc")
             ten = khu_vuc.get("tenkhuvuc")
-            xe_hien_tai = so_xe.get(ten, 0)
+            xe_hien_tai = so_xe.get(ma, 0)
 
             supabase.table("khuvuc").update({
                 "soxehientai": xe_hien_tai

@@ -800,7 +800,7 @@ loaixe
               │
               └──── vitrido
                         │
-                        └──── khuvuc (theo tenkhuvuc)
+                        └──── khuvuc (theo makhuvuc, khóa ngoại)
 
 vethang
    │

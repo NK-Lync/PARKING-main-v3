@@ -5,34 +5,39 @@
 App.views.login = {
   render() {
     const root = document.getElementById("login-root");
+    const U = App.ui;
+
     root.innerHTML = `
-      <div class="auth-wrap">
-        <div class="card auth-card shadow-lg">
-          <div class="card-body p-4 p-md-5">
-            <div class="text-center mb-4">
-              <i class="bi bi-p-square-fill text-primary" style="font-size:3rem"></i>
-              <h4 class="mt-3 fw-bold">Xe Parking</h4>
-              <p class="text-muted mb-0">Hệ thống quản lý bãi đỗ xe tích hợp AI</p>
-            </div>
+      <div class="xp-auth">
+        <div class="xp-auth-card">
+          <div class="xp-auth-mark">
+            ${App.icons.svg("parking", 24)}
+          </div>
 
-            <form id="login-form" novalidate>
-              <div class="mb-3">
-                <label class="form-label">Tên đăng nhập</label>
-                <input type="text" class="form-control" name="tendangnhap" placeholder="Tên đăng nhập" autocomplete="username" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Mật khẩu</label>
-                <input type="password" class="form-control" name="matkhau" placeholder="Mật khẩu" autocomplete="current-password" required>
-              </div>
-              <div id="login-error" class="alert alert-danger d-none"></div>
-              <button type="submit" class="btn btn-primary w-100" id="login-btn">
-                <i class="bi bi-box-arrow-in-right me-1"></i>Đăng nhập
-              </button>
-            </form>
+          <div class="xp-auth-title">XeParking</div>
+          <div class="xp-auth-sub">Hệ thống quản lý bãi đỗ xe tích hợp AI</div>
 
-            <div class="mt-4 text-center small text-muted">
-              <div>admin / admin123 · nhanvien / nhanvien123 · quanly / quanly123</div>
-            </div>
+          <form id="login-form" novalidate style="margin-top:24px">
+            ${U.field("Tên đăng nhập",
+              `<input type="text" class="xp-input" name="tendangnhap"
+                      placeholder="Nhập tên đăng nhập" autocomplete="username" required>`)}
+            ${U.field("Mật khẩu",
+              `<input type="password" class="xp-input" name="matkhau"
+                      placeholder="Nhập mật khẩu" autocomplete="current-password" required>`)}
+
+            <div id="login-error" hidden style="margin-top:14px"></div>
+
+            <button type="submit" class="xp-btn xp-btn-primary xp-btn-block"
+                    id="login-btn" style="margin-top:18px;height:40px">
+              ${App.icons.svg("log-in", 16)}Đăng nhập
+            </button>
+          </form>
+
+          <div class="xp-auth-foot">
+            <div class="xp-eyebrow" style="margin-bottom:6px">Tài khoản dùng thử</div>
+            <div>Quản trị viên <code>admin</code> / <code>admin123</code></div>
+            <div>Nhân viên bãi xe <code>nhanvien</code> / <code>nhanvien123</code></div>
+            <div>Người quản lý <code>quanly</code> / <code>quanly123</code></div>
           </div>
         </div>
       </div>`;
@@ -41,33 +46,40 @@ App.views.login = {
     const btn = document.getElementById("login-btn");
     const errBox = document.getElementById("login-error");
 
+    const hienLoi = (chu) => {
+      errBox.innerHTML = `<div class="xp-alert err">
+        ${App.icons.svg("warning", 17)}<div>${App.ui.escape(chu)}</div>
+      </div>`;
+      errBox.hidden = false;
+    };
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
-      const tendangnhap = fd.get("tendangnhap").trim();
+      const tendangnhap = String(fd.get("tendangnhap") || "").trim();
       const matkhau = fd.get("matkhau");
 
       if (!tendangnhap || !matkhau) {
-        errBox.textContent = "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.";
-        errBox.classList.remove("d-none");
+        hienLoi("Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.");
         return;
       }
 
-      errBox.classList.add("d-none");
+      errBox.hidden = true;
       btn.disabled = true;
-      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Đang đăng nhập…';
+      btn.innerHTML = '<span class="xp-spin"></span>Đang đăng nhập…';
 
       try {
-        const res = await App.auth.login(tendangnhap, matkhau);
+        await App.auth.login(tendangnhap, matkhau);
         window.location.hash = "#/dashboard";
         App.router.route();
       } catch (err) {
-        errBox.textContent = err.message || "Đăng nhập thất bại.";
-        errBox.classList.remove("d-none");
+        hienLoi(err.message || "Đăng nhập thất bại.");
       } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-box-arrow-in-right me-1"></i>Đăng nhập';
+        btn.innerHTML = `${App.icons.svg("log-in", 16)}Đăng nhập`;
       }
     });
+
+    form.querySelector('[name="tendangnhap"]').focus();
   },
 };

@@ -32,3 +32,15 @@ test.jpg
 # Temporary files
 *.tmp
 *.temp
+
+# Cấu hình nội bộ (clone từ repo PARKING-main-v2-private).
+# Chứa .env thật và model tự huấn luyện — KHÔNG BAO GIỜ commit.
+_private/
+
+# Script cấp quyền DB: GRANT toàn quyền cho anon + DISABLE ROW LEVEL SECURITY.
+# Đẩy lên repo public là mở đường ghi/xoá dữ liệu cho bất kỳ ai có anon key.
+database/quyen_truy_cap.sql
+
+# Công cụ cục bộ / bản nháp, không thuộc dự án
+.superpowers/
+_scratch/

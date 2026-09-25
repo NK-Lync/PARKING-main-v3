@@ -7,6 +7,41 @@ from database.supabase_client import supabase
 class ParkingService:
 
     # ============================================================
+    # TIỆN ÍCH NỘI BỘ
+    # ============================================================
+    @staticmethod
+    def _bang_ten_khu_vuc():
+        """
+        Trả về dict {makhuvuc: tenkhuvuc}.
+
+        Bảng vitrido chỉ lưu khóa ngoại makhuvuc. Các API trả về một
+        dòng vitrido vẫn kèm thêm tenkhuvuc để frontend hiển thị được
+        ngay, không phải gọi thêm /api/khuvuc rồi tự tra.
+        """
+        response = (
+            supabase
+            .table("khuvuc")
+            .select("makhuvuc, tenkhuvuc")
+            .execute()
+        )
+
+        return {
+            khu_vuc["makhuvuc"]: khu_vuc["tenkhuvuc"]
+            for khu_vuc in (response.data or [])
+        }
+
+    @staticmethod
+    def _kem_ten_khu_vuc(vi_tri, bang_ten):
+        """Bổ sung tenkhuvuc vào một dòng vitrido."""
+        if not vi_tri:
+            return vi_tri
+
+        return {
+            **vi_tri,
+            "tenkhuvuc": bang_ten.get(vi_tri.get("makhuvuc"))
+        }
+
+    # ============================================================
     # XE VÀO BÃI
     # ============================================================
     @staticmethod
@@ -206,13 +241,18 @@ class ParkingService:
         # --------------------------------------------------------
         # 11. Trả kết quả
         # --------------------------------------------------------
+        bang_ten_khu_vuc = ParkingService._bang_ten_khu_vuc()
+
         return {
             "success": True,
             "message": "Xe vào bãi thành công",
             "data": {
                 "luotgui": parking_response.data[0],
                 "vitri": {
-                    **available_position,
+                    **ParkingService._kem_ten_khu_vuc(
+                        available_position,
+                        bang_ten_khu_vuc
+                    ),
                     "trangthai": "Đang sử dụng"
                 }
             }
@@ -327,7 +367,7 @@ class ParkingService:
             supabase
             .table("vitrido")
             .select(
-                "mavitri, tenkhuvuc, trangthai"
+                "mavitri, makhuvuc, trangthai"
             )
             .eq("mavitri", ma_vi_tri)
             .limit(1)
@@ -481,7 +521,10 @@ class ParkingService:
             ),
             "data": {
                 "luotgui": created_parking,
-                "vitri": position_update.data[0],
+                "vitri": ParkingService._kem_ten_khu_vuc(
+                    position_update.data[0],
+                    ParkingService._bang_ten_khu_vuc()
+                ),
                 "nguon": "AI"
             }
         }
@@ -812,7 +855,7 @@ class ParkingService:
             supabase
             .table("vitrido")
             .select(
-                "mavitri, tenkhuvuc, trangthai"
+                "mavitri, makhuvuc, trangthai"
             )
             .order("mavitri")
             .execute()
@@ -1127,6 +1170,8 @@ class ParkingService:
             positions_response.data or []
         )
 
+        khuvuc_map = ParkingService._bang_ten_khu_vuc()
+
         total_positions = len(
             positions
         )
@@ -1228,10 +1273,17 @@ class ParkingService:
                 "mavitri":
                     parking["mavitri"],
 
+                "makhuvuc":
+                    (
+                        position["makhuvuc"]
+                        if position
+                        else None
+                    ),
+
                 "tenkhuvuc":
                     (
-                        position["tenkhuvuc"]
-                        if position
+                        khuvuc_map.get(position["makhuvuc"])
+                        if position and "makhuvuc" in position
                         else None
                     ),
 

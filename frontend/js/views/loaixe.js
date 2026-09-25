@@ -6,17 +6,22 @@ App.views.loaixe = {
   _rows: [],
 
   async render() {
+    const U = App.ui;
     App.router.setTitle("Quản lý loại xe");
-    App.router.setContent(`
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span>Danh sách loại xe</span>
-          ${App.ui.addButton("Thêm loại xe")}
-        </div>
-        <div class="card-body" id="loaixe-table">${App.ui.spinner()}</div>
-      </div>`);
+
+    App.router.setContent(
+      U.card({
+        title: "Danh sách loại xe",
+        note: "Đơn giá này là cơ sở tính phí khi xe ra khỏi bãi",
+        actions: U.addButton("Thêm loại xe"),
+        flush: true,
+        body: `<div id="loaixe-table">${U.spinner()}</div>`,
+      })
+    );
+
     document.querySelector('[data-action="add"]').addEventListener("click", () => this.openForm(null));
     document.getElementById("loaixe-table").addEventListener("click", (e) => this._onAction(e));
+
     await this.load();
   },
 
@@ -26,20 +31,21 @@ App.views.loaixe = {
       this._rows = res.data || [];
       this.draw();
     } catch (err) {
-      document.getElementById("loaixe-table").innerHTML =
-        `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      document.getElementById("loaixe-table").innerHTML = App.ui.alertLoi(err);
     }
   },
 
   draw() {
-    document.getElementById("loaixe-table").innerHTML = App.ui.table(
+    const U = App.ui;
+    document.getElementById("loaixe-table").innerHTML = U.table(
       [
         { label: "Mã", key: "maloaixe" },
-        { label: "Tên loại xe", key: "tenloaixe" },
-        { label: "Đơn giá / giờ", key: "dongia", render: (v) => App.ui.fmtMoney(v) },
-        { label: "", key: "maloaixe", render: (v) => App.ui.actionButtons(v) },
+        { label: "Tên loại xe", key: "tenloaixe", strong: true },
+        { label: "Đơn giá / giờ", key: "dongia", render: (v) => U.fmtMoney(v) },
+        { label: "", key: "maloaixe", act: true, render: (v) => U.actionButtons(v) },
       ],
-      this._rows
+      this._rows,
+      "Chưa có loại xe nào."
     );
   },
 
@@ -48,46 +54,52 @@ App.views.loaixe = {
     if (!btn) return;
     const id = btn.dataset.id;
     if (btn.dataset.action === "edit") {
-      const row = this._rows.find((r) => String(r.maloaixe) === String(id));
-      this.openForm(row);
+      this.openForm(this._rows.find((r) => String(r.maloaixe) === String(id)));
     } else if (btn.dataset.action === "delete") {
       this.remove(id);
     }
   },
 
   openForm(row) {
-    const isEdit = !!row;
-    const modal = App.ui.modal({
-      title: isEdit ? "Sửa loại xe" : "Thêm loại xe",
+    const U = App.ui;
+    const sua = !!row;
+
+    const modal = U.modal({
+      title: sua ? "Sửa loại xe" : "Thêm loại xe",
       body: `
         <form id="lx-form">
-          <div class="mb-3">
-            <label class="form-label">Tên loại xe</label>
-            <input type="text" class="form-control" name="tenloaixe" value="${App.ui.escape(row?.tenloaixe || "")}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Đơn giá (VNĐ / giờ)</label>
-            <input type="number" class="form-control" name="dongia" min="0" value="${row?.dongia ?? 0}" required>
-          </div>
+          ${U.field("Tên loại xe", U.input({
+            name: "tenloaixe",
+            value: row?.tenloaixe || "",
+            placeholder: "VD: Xe máy",
+            required: true,
+          }))}
+          ${U.field("Đơn giá (VNĐ / giờ)", U.input({
+            name: "dongia",
+            type: "number",
+            min: 0,
+            step: 1000,
+            value: row?.dongia ?? 0,
+            required: true,
+          }), "Phí tính theo mỗi giờ hoặc phần giờ đã gửi")}
         </form>`,
-      footer: App.ui.formButtons(),
+      footer: U.formButtons(),
     });
     modal.show();
 
+    modal.find('[data-action="cancel"]').addEventListener("click", () => modal.hide());
     modal.find('[data-action="save"]').addEventListener("click", async () => {
       const fd = new FormData(modal.find("#lx-form"));
       const body = {
-        tenloaixe: fd.get("tenloaixe").trim(),
+        tenloaixe: String(fd.get("tenloaixe") || "").trim(),
         dongia: Number(fd.get("dongia")),
       };
       try {
-        if (isEdit) {
-          await App.api.put(`/api/loaixe/${row.maloaixe}`, body);
-        } else {
-          await App.api.post("/api/loaixe", body);
-        }
+        if (sua) await App.api.put(`/api/loaixe/${row.maloaixe}`, body);
+        else await App.api.post("/api/loaixe", body);
+
         modal.hide();
-        App.ui.toast(isEdit ? "Đã cập nhật loại xe." : "Đã thêm loại xe.");
+        App.ui.toast(sua ? "Đã cập nhật loại xe." : "Đã thêm loại xe.");
         await this.load();
       } catch (err) {
         App.ui.toast(err.message, "danger");
@@ -96,7 +108,15 @@ App.views.loaixe = {
   },
 
   async remove(id) {
-    if (!confirm("Xóa loại xe này?")) return;
+    const row = this._rows.find((r) => String(r.maloaixe) === String(id));
+    const dongY = await App.ui.confirm({
+      title: "Xóa loại xe",
+      message: `Xóa loại xe “${row ? row.tenloaixe : id}”?`,
+      okLabel: "Xóa",
+      tone: "err",
+    });
+    if (!dongY) return;
+
     try {
       await App.api.del(`/api/loaixe/${id}`);
       App.ui.toast("Đã xóa loại xe.");

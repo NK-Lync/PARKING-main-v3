@@ -17,7 +17,7 @@ Quản lý khu vực đỗ xe và theo dõi sức chứa từng khu vực (UC03)
 ```text
 Khu vực (khuvuc)
      ↓
-Vị trí đỗ (vitrido) — gắn theo tenkhuvuc
+Vị trí đỗ (vitrido) — gắn theo makhuvuc (khóa ngoại)
      ↓
 Đếm số chỗ trống / số xe hiện tại
      ↓

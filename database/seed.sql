@@ -40,13 +40,13 @@ INSERT INTO khuvuc (tenkhuvuc, tongsovitri, soxehientai) VALUES
 --    6 vị trí, khớp với config/parking_slots.json (lưới 3×2).
 --    Vị trí 1-3 thuộc Khu A, vị trí 4-6 thuộc Khu B.
 -- ============================================================
-INSERT INTO vitrido (tenkhuvuc, trangthai) VALUES
-    ('Khu A', 'Còn trống'),  -- mavitri = 1
-    ('Khu A', 'Còn trống'),  -- mavitri = 2
-    ('Khu A', 'Còn trống'),  -- mavitri = 3
-    ('Khu B', 'Còn trống'),  -- mavitri = 4
-    ('Khu B', 'Còn trống'),  -- mavitri = 5
-    ('Khu B', 'Còn trống');  -- mavitri = 6
+INSERT INTO vitrido (makhuvuc, trangthai) VALUES
+    (1, 'Còn trống'),  -- mavitri = 1
+    (1, 'Còn trống'),  -- mavitri = 2
+    (1, 'Còn trống'),  -- mavitri = 3
+    (2, 'Còn trống'),  -- mavitri = 4
+    (2, 'Còn trống'),  -- mavitri = 5
+    (2, 'Còn trống');  -- mavitri = 6
 
 
 -- ============================================================

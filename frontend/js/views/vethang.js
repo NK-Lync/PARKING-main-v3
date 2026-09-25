@@ -1,5 +1,8 @@
 // ============================================================
 // views/vethang.js — quản lý vé tháng (CRUD)
+// ------------------------------------------------------------
+// API trả ngày dạng ISO đầy đủ, nhưng ô <input type="date"> chỉ
+// nhận 10 ký tự đầu, nên phải cắt bớt trước khi đổ vào form.
 // ============================================================
 
 App.views.vethang = {
@@ -7,25 +10,37 @@ App.views.vethang = {
   _loaixe: [],
 
   async render() {
+    const U = App.ui;
     App.router.setTitle("Quản lý vé tháng");
-    App.router.setContent(`
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <span>Danh sách vé tháng</span>
-          ${App.ui.addButton("Thêm vé tháng")}
-        </div>
-        <div class="card-body" id="vethang-table">${App.ui.spinner()}</div>
-      </div>`);
+
+    App.router.setContent(
+      U.card({
+        title: "Danh sách vé tháng",
+        note: "Xe có vé tháng còn hiệu lực sẽ được miễn phí khi ra bãi",
+        actions: U.addButton("Thêm vé tháng"),
+        flush: true,
+        body: `<div id="vethang-table">${U.spinner()}</div>`,
+      })
+    );
+
     document.querySelector('[data-action="add"]').addEventListener("click", () => this.openForm(null));
     document.getElementById("vethang-table").addEventListener("click", (e) => this._onAction(e));
-    await Promise.all([this.load(), this.loadLoaixe()]);
+
+    await Promise.all([this.loadLoaixe(), this.load()]);
+  },
+
+  // ISO datetime -> "yyyy-mm-dd" cho ô nhập ngày.
+  _toDate(v) {
+    return v ? String(v).slice(0, 10) : "";
   },
 
   async loadLoaixe() {
     try {
       const res = await App.api.get("/api/loaixe");
       this._loaixe = res.data || [];
-    } catch (err) { /* không quan trọng */ }
+    } catch (err) {
+      this._loaixe = [];
+    }
   },
 
   async load() {
@@ -34,30 +49,31 @@ App.views.vethang = {
       this._rows = res.data || [];
       this.draw();
     } catch (err) {
-      document.getElementById("vethang-table").innerHTML =
-        `<div class="alert alert-danger">${App.ui.escape(err.message)}</div>`;
+      document.getElementById("vethang-table").innerHTML = App.ui.alertLoi(err);
     }
-  },
-
-  draw() {
-    document.getElementById("vethang-table").innerHTML = App.ui.table(
-      [
-        { label: "Mã vé", key: "mave" },
-        { label: "Biển số", key: "bienso" },
-        { label: "Khách hàng", key: "tenkhachhang" },
-        { label: "Loại xe", key: "maloaixe", render: (v) => this._loaixeName(v) },
-        { label: "Ngày đăng ký", key: "ngaydangky", render: (v) => App.ui.fmtDateTime(v) },
-        { label: "Ngày hết hạn", key: "ngayhethan", render: (v) => App.ui.fmtDateTime(v) },
-        { label: "Trạng thái", key: "trangthai", render: (v) => App.ui.boolBadge(v) },
-        { label: "", key: "mave", render: (v) => App.ui.actionButtons(v) },
-      ],
-      this._rows
-    );
   },
 
   _loaixeName(id) {
     const lx = this._loaixe.find((l) => String(l.maloaixe) === String(id));
-    return lx ? lx.tenloaixe : (id ?? "—");
+    return lx ? lx.tenloaixe : "—";
+  },
+
+  draw() {
+    const U = App.ui;
+    document.getElementById("vethang-table").innerHTML = U.table(
+      [
+        { label: "Mã vé", key: "mave" },
+        { label: "Biển số", key: "bienso", strong: true },
+        { label: "Khách hàng", key: "tenkhachhang", render: (v) => (v ? U.escape(v) : "—") },
+        { label: "Loại xe", key: "maloaixe", render: (v) => U.escape(this._loaixeName(v)) },
+        { label: "Ngày đăng ký", key: "ngaydangky", render: (v) => U.fmtDate(v) },
+        { label: "Ngày hết hạn", key: "ngayhethan", render: (v) => U.fmtDate(v) },
+        { label: "Trạng thái", key: "trangthai", render: (v) => U.boolBadge(v) },
+        { label: "", key: "mave", act: true, render: (v) => U.actionButtons(v) },
+      ],
+      this._rows,
+      "Chưa có vé tháng nào."
+    );
   },
 
   _onAction(e) {
@@ -65,75 +81,85 @@ App.views.vethang = {
     if (!btn) return;
     const id = btn.dataset.id;
     if (btn.dataset.action === "edit") {
-      const row = this._rows.find((r) => String(r.mave) === String(id));
-      this.openForm(row);
+      this.openForm(this._rows.find((r) => String(r.mave) === String(id)));
     } else if (btn.dataset.action === "delete") {
       this.remove(id);
     }
   },
 
   openForm(row) {
-    const isEdit = !!row;
-    const lxOptions = this._loaixe
-      .map((l) => `<option value="${l.maloaixe}" ${row && String(row.maloaixe) === String(l.maloaixe) ? "selected" : ""}>${App.ui.escape(l.tenloaixe)}</option>`)
-      .join("");
+    const U = App.ui;
+    const sua = !!row;
 
-    const toDate = (v) => v ? String(v).slice(0, 10) : "";
-
-    const modal = App.ui.modal({
-      title: isEdit ? "Sửa vé tháng" : "Thêm vé tháng",
+    const modal = U.modal({
+      title: sua ? "Sửa vé tháng" : "Thêm vé tháng",
       body: `
-        <form id="vth-form">
-          <div class="mb-3">
-            <label class="form-label">Biển số xe</label>
-            <input type="text" class="form-control" name="bienso" value="${App.ui.escape(row?.bienso || "")}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Tên khách hàng</label>
-            <input type="text" class="form-control" name="tenkhachhang" value="${App.ui.escape(row?.tenkhachhang || "")}">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Loại xe</label>
-            <select class="form-select" name="maloaixe"><option value="">— Chọn loại xe —</option>${lxOptions}</select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Ngày đăng ký</label>
-            <input type="date" class="form-control" name="ngaydangky" value="${toDate(row?.ngaydangky)}">
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Ngày hết hạn</label>
-            <input type="date" class="form-control" name="ngayhethan" value="${toDate(row?.ngayhethan)}" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Trạng thái</label>
-            <select class="form-select" name="trangthai">
-              <option value="true" ${!row || row.trangthai ? "selected" : ""}>Hiệu lực</option>
-              <option value="false" ${row && row.trangthai === false ? "selected" : ""}>Hết hạn</option>
-            </select>
-          </div>
+        <form id="vt-form">
+          ${U.field("Biển số", U.input({
+            name: "bienso",
+            value: row?.bienso || "",
+            placeholder: "VD: 51A-12345",
+            required: true,
+          }))}
+          ${U.field("Tên khách hàng", U.input({
+            name: "tenkhachhang",
+            value: row?.tenkhachhang || "",
+            placeholder: "Không bắt buộc",
+          }))}
+          ${U.field("Loại xe", U.select({
+            name: "maloaixe",
+            value: row?.maloaixe ?? "",
+            placeholder: "— Chưa xác định —",
+            options: this._loaixe.map((l) => ({
+              value: l.maloaixe,
+              label: `${l.tenloaixe} (${U.fmtMoney(l.dongia)}/giờ)`,
+            })),
+          }))}
+          ${U.field("Ngày đăng ký", U.input({
+            name: "ngaydangky",
+            type: "date",
+            value: this._toDate(row?.ngaydangky),
+          }), "Để trống thì lấy ngày hôm nay")}
+          ${U.field("Ngày hết hạn", U.input({
+            name: "ngayhethan",
+            type: "date",
+            value: this._toDate(row?.ngayhethan),
+            required: true,
+          }))}
+          ${U.field("Trạng thái", U.select({
+            name: "trangthai",
+            value: String(row ? !!row.trangthai : true),
+            required: true,
+            options: [
+              { value: "true", label: "Còn hiệu lực" },
+              { value: "false", label: "Ngừng hiệu lực" },
+            ],
+          }), "Vé hết hạn vẫn giữ trong danh sách, chỉ đổi trạng thái")}
         </form>`,
-      footer: App.ui.formButtons(),
+      footer: U.formButtons(),
     });
     modal.show();
 
+    modal.find('[data-action="cancel"]').addEventListener("click", () => modal.hide());
     modal.find('[data-action="save"]').addEventListener("click", async () => {
-      const fd = new FormData(modal.find("#vth-form"));
+      const fd = new FormData(modal.find("#vt-form"));
+      const maLoaiXe = String(fd.get("maloaixe") || "");
+
       const body = {
-        bienso: fd.get("bienso").trim(),
-        tenkhachhang: fd.get("tenkhachhang").trim() || null,
-        maloaixe: fd.get("maloaixe") ? Number(fd.get("maloaixe")) : null,
-        ngaydangky: fd.get("ngaydangky") || null,
-        ngayhethan: fd.get("ngayhethan"),
-        trangthai: fd.get("trangthai") === "true",
+        bienso: String(fd.get("bienso") || "").trim(),
+        tenkhachhang: String(fd.get("tenkhachhang") || "").trim() || null,
+        maloaixe: maLoaiXe ? Number(maLoaiXe) : null,
+        ngaydangky: String(fd.get("ngaydangky") || "") || null,
+        ngayhethan: String(fd.get("ngayhethan") || ""),
+        trangthai: String(fd.get("trangthai")) === "true",
       };
+
       try {
-        if (isEdit) {
-          await App.api.put(`/api/vethang/${row.mave}`, body);
-        } else {
-          await App.api.post("/api/vethang", body);
-        }
+        if (sua) await App.api.put(`/api/vethang/${row.mave}`, body);
+        else await App.api.post("/api/vethang", body);
+
         modal.hide();
-        App.ui.toast(isEdit ? "Đã cập nhật vé tháng." : "Đã thêm vé tháng.");
+        App.ui.toast(sua ? "Đã cập nhật vé tháng." : "Đã thêm vé tháng.");
         await this.load();
       } catch (err) {
         App.ui.toast(err.message, "danger");
@@ -142,7 +168,15 @@ App.views.vethang = {
   },
 
   async remove(id) {
-    if (!confirm("Xóa vé tháng này?")) return;
+    const row = this._rows.find((r) => String(r.mave) === String(id));
+    const dongY = await App.ui.confirm({
+      title: "Xóa vé tháng",
+      message: `Xóa vé tháng của xe “${row ? row.bienso : id}”?`,
+      okLabel: "Xóa",
+      tone: "err",
+    });
+    if (!dongY) return;
+
     try {
       await App.api.del(`/api/vethang/${id}`);
       App.ui.toast("Đã xóa vé tháng.");
