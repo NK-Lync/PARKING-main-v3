@@ -4,6 +4,7 @@ import os
 import requests
 
 from ai.iai_provider import IAIProvider
+from database.supabase_client import supabase
 
 
 class HeThongAI(IAIProvider):
@@ -38,10 +39,36 @@ class HeThongAI(IAIProvider):
             "gpt-4o"
         )
 
+    def _is_ai_enabled_in_db(self):
+        try:
+            if supabase:
+                res = supabase.table("ai_system_config").select("config_value").eq("config_key", "AI_ENABLED").execute()
+                if res.data and len(res.data) > 0:
+                    val = res.data[0]["config_value"]
+                    return str(val).lower() in ("true", "1", "yes")
+        except Exception:
+            pass
+        return True
+
+    def _log_prompt(self, prompt_type, system_prompt, user_prompt, response_content, status, error_message=None):
+        try:
+            if supabase:
+                supabase.table("ai_prompt_logs").insert({
+                    "prompt_type": prompt_type,
+                    "system_prompt": system_prompt,
+                    "user_prompt": user_prompt,
+                    "response_content": response_content or "",
+                    "model_name": self.model_name,
+                    "status": status,
+                    "error_message": error_message
+                }).execute()
+        except Exception as e:
+            print(f"Lỗi ghi log prompt AI vào DB: {e}")
+
     # ============================================================
     # GỌI API CHAT COMPLETIONS
     # ============================================================
-    def _chat(self, system_prompt, user_prompt):
+    def _chat(self, prompt_type, system_prompt, user_prompt):
         """
         Gọi endpoint chat/completions.
 
@@ -50,12 +77,13 @@ class HeThongAI(IAIProvider):
             thành công      → (văn bản, None)
             không có key    → (None, None)   chế độ nội bộ, không phải lỗi
             gọi thất bại    → (None, mô tả lỗi)
-
-        Bản trước nuốt mọi exception rồi trả None, khiến key sai hoặc
-        hết hạn trông y hệt như không cấu hình key. Tách riêng hai
-        trường hợp để lỗi cấu hình không bị che.
         """
+        if not self._is_ai_enabled_in_db():
+            self._log_prompt(prompt_type, system_prompt, user_prompt, None, "DISABLED", "AI is disabled in database configuration")
+            return None, "AI is disabled in database configuration"
+
         if not self.api_key:
+            self._log_prompt(prompt_type, system_prompt, user_prompt, None, "FALLBACK", "No API key configured")
             return None, None
 
         try:
@@ -85,6 +113,7 @@ class HeThongAI(IAIProvider):
                 .strip()
             )
 
+            self._log_prompt(prompt_type, system_prompt, user_prompt, noi_dung, "SUCCESS")
             return noi_dung, None
 
         except requests.HTTPError as e:
@@ -93,14 +122,18 @@ class HeThongAI(IAIProvider):
             if e.response is not None:
                 chi_tiet = f" — {e.response.text[:300]}"
 
-            return None, (
+            err_msg = (
                 f"HTTP {e.response.status_code}{chi_tiet}"
                 if e.response is not None
                 else str(e)
             )
+            self._log_prompt(prompt_type, system_prompt, user_prompt, None, "ERROR", err_msg)
+            return None, err_msg
 
         except Exception as e:
-            return None, f"{type(e).__name__}: {e}"
+            err_msg = f"{type(e).__name__}: {e}"
+            self._log_prompt(prompt_type, system_prompt, user_prompt, None, "ERROR", err_msg)
+            return None, err_msg
 
     @staticmethod
     def _canh_bao_loi_genai(loi):
@@ -133,7 +166,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat("bao_cao", system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -181,7 +214,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat("gio_cao_diem", system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -236,7 +269,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(data, ensure_ascii=False)}"
         )
 
-        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat("goi_y_nhan_su", system_prompt, user_prompt)
 
         if genai_text:
             return {
@@ -291,7 +324,7 @@ class HeThongAI(IAIProvider):
             f"{json.dumps(context, ensure_ascii=False)}"
         )
 
-        genai_text, loi_genai = self._chat(system_prompt, user_prompt)
+        genai_text, loi_genai = self._chat("hoi_dap", system_prompt, user_prompt)
 
         if genai_text:
             return {

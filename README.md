@@ -333,6 +333,17 @@ GET / PUT / DELETE cho một bản ghi.
 
 > Xem chi tiết API trong `docs/skills/api.md`.
 
+## Kiểm thử tự động AI & Ghi log Prompt qua Database
+
+Hệ thống tích hợp cơ chế kiểm soát và kiểm thử AI tự động thông qua cơ sở dữ liệu:
+- **Kiểm soát AI qua DB (`ai_system_config`)**: Cho phép bật/tắt dịch vụ AI và điều chỉnh tham số trực tiếp từ cơ sở dữ liệu Supabase.
+- **Lưu lịch sử Prompt (`ai_prompt_logs`)**: Tự động ghi lại toàn bộ system prompt, user prompt, phản hồi, model, và trạng thái (SUCCESS, FALLBACK, ERROR, DISABLED) của mọi lần gọi AI.
+- **Chạy kiểm thử tự động**:
+  ```bash
+  python tests/test_ai_automated_db.py
+  ```
+  Script này sẽ tự động gọi toàn bộ các endpoint/chức năng AI, kiểm tra tính hợp lệ và ghi log kết quả xuống cơ sở dữ liệu.
+
 ## Cấu trúc thư mục
 
 ```
