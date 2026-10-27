@@ -373,3 +373,11 @@ PARKING-main v3/
 _private/                   # (tuỳ chọn) clone repo private — .env thật + model
                             #  Đã nằm trong .gitignore, không bao giờ bị commit
 ```
+
+## Nhật ký thay đổi
+
+| Ngày | Thay đổi |
+|---|---|
+| 2026-09-26 | Viết lại toàn bộ giao diện theo bộ thiết kế `xp-*`, bỏ phụ thuộc CDN; chuẩn hoá `vitrido.makhuvuc`. |
+| 2026-10-14 | Kiểm soát AI qua bảng `ai_system_config`, ghi log prompt vào `ai_prompt_logs`, thêm script kiểm thử tự động; đưa `archive/` (dữ liệu mẫu) vào repo. |
+| 2026-10-28 | Sửa cột **Loại xe** ở màn *Lịch sử* và *Vé tháng*: `load()` vẽ bảng trước khi `loadLoaixe()` xong nên cột hiện mã số (`L01`) thay vì tên, hoặc dấu `—`. Hai màn này giờ vẽ lại một lần sau khi `Promise.all` hoàn tất (`frontend/js/views/lichsu.js`, `frontend/js/views/vethang.js`). |
