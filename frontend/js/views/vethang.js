@@ -27,6 +27,9 @@ App.views.vethang = {
     document.getElementById("vethang-table").addEventListener("click", (e) => this._onAction(e));
 
     await Promise.all([this.loadLoaixe(), this.load()]);
+    // load() có thể vẽ bảng trước khi loadLoaixe() xong, khi đó cột
+    // "Loại xe" hiện dấu "—". Vẽ lại một lần sau khi đã đủ dữ liệu.
+    this.draw();
   },
 
   // ISO datetime -> "yyyy-mm-dd" cho ô nhập ngày.

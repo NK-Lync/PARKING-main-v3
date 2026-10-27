@@ -43,6 +43,9 @@ App.views.lichsu = {
     document.getElementById("lichsu-tinhtrang").addEventListener("change", () => this.draw());
 
     await Promise.all([this.load(), this.loadLoaixe()]);
+    // load() có thể vẽ bảng trước khi loadLoaixe() xong, khi đó cột
+    // "Loại xe" hiện mã số. Vẽ lại một lần sau khi đã đủ dữ liệu.
+    this.draw();
   },
 
   async loadLoaixe() {
