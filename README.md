@@ -158,6 +158,26 @@ bảng đã có dữ liệu.
 > quyền, đổi sang **secret key** (`sb_secret_...`, role `service_role` bỏ qua RLS) —
 > lưu ý không đưa secret key lên frontend.
 
+### Xử lý sự cố: đọc ra 0 dòng / đăng nhập báo "không tồn tại"
+
+Khi RLS còn bật mà chưa có policy cho role `anon`, PostgREST vẫn trả **HTTP 200
+với `[]`** — backend thấy bảng như rỗng dù dữ liệu còn nguyên. Triệu chứng:
+
+- `GET /api/taikhoan` trả `"data": []` → mọi lần đăng nhập trả **401 "Tên đăng
+  nhập không tồn tại"**, kể cả tài khoản mẫu.
+- `GET /api/parking/status` trả `"tong_vi_tri": 0`.
+
+**Đây là lỗi quyền truy cập, không phải mất dữ liệu.** Cách xử lý: mở Supabase →
+SQL Editor → chạy `database/quyen_truy_cap.sql` (cấp quyền + tắt RLS cho 6 bảng).
+Chỉ cần chạy một lần; cấu hình lưu trên Supabase nên mỗi lần khởi động lại app
+không phải làm lại.
+
+> **Tuyệt đối không chạy lại `seed.sql` để "khôi phục dữ liệu"** — file này mở đầu
+> bằng `TRUNCATE` cả 6 bảng, sẽ xóa sạch dữ liệu thật. Tương tự,
+> `migrate_khuvuc.sql` chỉ dùng cho database **chưa** migrate; chạy lại trên
+> database đã migrate sẽ báo `column v.tenkhuvuc does not exist` (vô hại — script
+> bọc trong `BEGIN … COMMIT` nên tự rollback).
+
 ### Tài khoản mẫu
 
 | Tên đăng nhập | Mật khẩu | Vai trò |
@@ -381,3 +401,4 @@ _private/                   # (tuỳ chọn) clone repo private — .env thật 
 | 2026-09-26 | Viết lại toàn bộ giao diện theo bộ thiết kế `xp-*`, bỏ phụ thuộc CDN; chuẩn hoá `vitrido.makhuvuc`. |
 | 2026-10-14 | Kiểm soát AI qua bảng `ai_system_config`, ghi log prompt vào `ai_prompt_logs`, thêm script kiểm thử tự động; đưa `archive/` (dữ liệu mẫu) vào repo. |
 | 2026-10-28 | Sửa cột **Loại xe** ở màn *Lịch sử* và *Vé tháng*: `load()` vẽ bảng trước khi `loadLoaixe()` xong nên cột hiện mã số (`L01`) thay vì tên, hoặc dấu `—`. Hai màn này giờ vẽ lại một lần sau khi `Promise.all` hoàn tất (`frontend/js/views/lichsu.js`, `frontend/js/views/vethang.js`). |
+| 2026-10-28 | Bổ sung mục **Xử lý sự cố** cho lỗi đăng nhập 401 / đọc ra 0 dòng do RLS. Không thay đổi mã nguồn: khắc phục bằng cách chạy `database/quyen_truy_cap.sql` (cấp quyền + tắt RLS) và `database/migrate_ai_logs.sql` (tạo `ai_prompt_logs`, `ai_system_config`) trên Supabase. |
